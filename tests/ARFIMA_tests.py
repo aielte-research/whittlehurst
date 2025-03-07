@@ -6,10 +6,9 @@ from tqdm import trange
 from pathos.multiprocessing import ProcessingPool as Pool
 import time
 
-from whittlehurst import whittle
+from whittlehurst import whittle, arfima
 
 from utils.metrics import calc_dev, calc_rmse
-from utils.arfima_gen import arfima
 from utils.plotters import general_plot, scatter_grid_plot
 
 class Model():
@@ -27,7 +26,7 @@ class Model():
         return est
 
 workers=32
-epochs=10
+epochs=1
 batch_size=1000
 
 models = dict(
