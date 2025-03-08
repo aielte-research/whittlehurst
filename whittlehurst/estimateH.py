@@ -10,6 +10,7 @@ https://onlinelibrary.wiley.com/doi/full/10.1111/jtsa.12750
 
 import numpy as np
 import scipy.optimize as so
+from typing import List
 from .spectraldensity import arfima, fGn, fGn_paxson, fGn_truncation, fGn_taylor
 
 
@@ -57,7 +58,7 @@ def whittle(seq, spectrum="fGn", K=None, spectrum_callback=None):
             spectrum_callback = fGn
         elif spectrum.lower() == "fgn_paxson":
             if K is None:
-                K=50 
+                K=50
             spectrum_callback = lambda H, n: fGn_paxson(H, n, K)
         elif spectrum.lower() == "fgn_truncation":
             if K is None:
@@ -74,10 +75,10 @@ def whittle(seq, spectrum="fGn", K=None, spectrum_callback=None):
     tmp = np.abs(np.fft.fft(seq))
     gammahat = np.exp(
         2 * np.log(tmp[1:int((n - 1) / 2) + 1])) / (2 * np.pi * n)
-    func = lambda H: whittlefunc(H, gammahat, n, spectrum_callback)
+    func = lambda H: __whittlefunc(H, gammahat, n, spectrum_callback)
     return so.fminbound(func, 0, 1)
 
-def whittlefunc(H, gammahat, n, spectrum_callback):
+def __whittlefunc(H, gammahat, n, spectrum_callback):
     """
     Evaluate the Whittle likelihood function for a given Hurst exponent.
 
@@ -113,3 +114,35 @@ def whittlefunc(H, gammahat, n, spectrum_callback):
     gammatheo = spectrum_callback(H, n)
     qml = gammahat / gammatheo
     return 2 * (2 * np.pi / n) * np.sum(qml)
+
+def variogram(path: List[float], p: float = 1) -> np.float64:
+    """
+    Estimate the Hurst exponent using a p-order variogram estimator.
+
+    This estimator computes the pth-order variogram based on differences in the sample path.
+    The order parameter p allows for different estimators:
+      - p = 1 corresponds to the madogram,
+      - p = 2 corresponds to the classical variogram,
+      - p = 1/2 corresponds to the rodogram.
+
+    Parameters
+    ----------
+    path : List[float]
+        The sample path (e.g., a realization of fractional Brownian motion).
+    p : float, optional
+        The order of variation (default is 1).
+
+    Returns
+    -------
+    np.float64
+        The estimated Hurst exponent computed using the variogram method.
+    """
+    # Calculate summed absolute differences raised to the power p.
+    sum1: float = np.sum([np.abs(path[i] - path[i-1])**p for i in range(len(path))])
+    sum2: float = np.sum([np.abs(path[i] - path[i-2])**p for i in range(len(path))])
+
+    def vp(increments: float, l: int) -> float:
+        return (1 / (2 * (len(path) - l))) * increments
+
+    H = 1 / p * ((np.log(vp(sum2, 2)) - np.log(vp(sum1, 1))) / np.log(2))
+    return H
