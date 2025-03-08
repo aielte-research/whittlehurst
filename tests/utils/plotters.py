@@ -160,7 +160,10 @@ def init_matplotlib_grid_figure(width=16, height=9, style="seaborn-poster", grid
             for j in range(grid_h):
                 idx = j*grid_w + i
                 if idx >= grid_len:
-                    fig.delaxes(axs[j][i])
+                    try:
+                        fig.delaxes(axs[j][i])
+                    except:
+                        fig.delaxes(axs[i])
     return fig, axs.flatten()
 
 def init_bokeh_figure(
@@ -323,8 +326,7 @@ class GeneralPlotter(Plotter):
         if len(Ys) > 0 and not isinstance(Ys[0], list):
             Ys = [Ys]
 
-        if len(legend.get("labels", [])) + len(baselines.get("labels", [])
-                                              ) + len(histogram_distr.get("labels", [])) == 0:
+        if len(legend.get("labels", [])) + len(baselines.get("labels", [])) + len(histogram_distr.get("labels", [])) == 0:
             legend["location"] = None
 
         if legend.get("location", None) is None or len(legend.get("labels", [])) == 0:
@@ -561,16 +563,10 @@ class GeneralPlotter(Plotter):
                 *[self.params["baselines"][k] for k in ["labels", "values", "colors", "dashes"]]
             ):
                 if self.params["baselines"]["vertical"]:
-                    try:
-                        yrange = [self.params["min_y"] - 1, self.params["max_y"] + 1]
-                    except:
-                        yrange = [self.params["min_y"], self.params["max_y"]]
+                    yrange = [self.params["min_y"], self.params["max_y"]]
                     ax.plot([value, value], yrange, matplotlib_dashes[dash], label=label, color=color, zorder=20)
                 else:
-                    try:
-                        xrange = [self.params["min_x"] - 1, self.params["max_x"] + 1]
-                    except:
-                        xrange = [self.params["min_x"], self.params["max_x"]]
+                    xrange = [self.params["min_x"], self.params["max_x"]]
                     ax.plot(xrange, [value, value], matplotlib_dashes[dash], label=label, color=color, zorder=20)
 
         for x, y, dash, color, label, marker, hist in zip(
