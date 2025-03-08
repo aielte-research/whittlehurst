@@ -12,14 +12,14 @@ from utils.metrics import calc_dev, calc_rmse
 from utils.plotters import general_plot, scatter_grid_plot
 
 class Model():
-    def __init__(self, num_cores=1, estimator=whittle, increments=False):
+    def __init__(self, num_cores=1, estimator=whittle, take_diff=True):
         self.num_cores = num_cores
-        self.increments = increments
+        self.take_diff = take_diff
         self.estimator = estimator
 
     def __call__(self, x):
         x = np.asarray(x)
-        if not self.increments:
+        if self.take_diff:
             x = x[:, :-1] - x[:, 1:]
         with Pool(self.num_cores) as p:
             est = p.map(self.estimator, x)
@@ -79,7 +79,7 @@ for n in n_s:
         "ylabel": "Local Bias",
         "title": "",
         "fname": f"fBm_Hurst_{n}_biases",
-        "dirname": "./plots",
+        "dirname": "./plots/fBm_Whittle_variants",
         "markers": None,
         "legend": {
             "location": "bottom_right",
@@ -104,7 +104,7 @@ for n in n_s:
         "ylabel": "Local Deviation",
         "title": "",
         "fname": f"fBm_Hurst_{n}_deviations",
-        "dirname": "./plots",
+        "dirname": "./plots/fBm_Whittle_variants",
         "markers": None,
         "legend": {
             "location": "bottom_right" if n<1600  else "top_right",
@@ -138,7 +138,7 @@ for n in n_s:
         "ylabel": "Local RMSE",
         "title": "",
         "fname": f"fBm_Hurst_{n}_RMSE",
-        "dirname": "./plots",
+        "dirname": "./plots/fBm_Whittle_variants",
         "markers": None,
         "legend": {
             "location": "top_right",
@@ -163,7 +163,7 @@ for n in n_s:
         "ylabel": "inferred H",
         #"title": title,
         "fname": f"fBm_Hurst_{n}_scatter_grid",
-        "dirname": "./plots",
+        "dirname": "./plots/fBm_Whittle_variants",
         "circle_size": 10,
         "opacity": 0.3,
         "colors": [Category10[10][i]],
@@ -194,7 +194,7 @@ for n in n_s:
         "ylabel": "Error",
         #"title": title,
         "fname": f"fBm_Hurst_{n}_error_scatter_grid",
-        "dirname": "./plots",
+        "dirname": "./plots/fBm_Whittle_variants",
         "circle_size": 10,
         "opacity": 0.3,
         "colors": [Category10[10][i]],
@@ -227,7 +227,7 @@ general_plot({
     "yscale": "log",
     "title": "",
     "fname": f"fBm_Hurst_calc_times",
-    "dirname": "./plots",
+    "dirname": "./plots/fBm_Whittle_variants",
     "markers": None,
     "legend": {
         "location": "top_left",
@@ -254,7 +254,7 @@ general_plot({
     "yscale": "log",
     "title": "",
     "fname": f"fBm_Hurst_RMSE",
-    "dirname": "./plots",
+    "dirname": "./plots/fBm_Whittle_variants",
     "markers": None,
     "legend": {
         "location": "bottom_left",
@@ -282,7 +282,7 @@ general_plot({
     "yscale": "log",
     "title": "",
     "fname": f"fBm_Hurst_RMSE_compute",
-    "dirname": "./plots",
+    "dirname": "./plots/fBm_Whittle_variants",
     "markers": None,
     "legend": {
         "location": "top_left",

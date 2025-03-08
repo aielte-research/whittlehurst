@@ -1,2 +1,2 @@
-from .estimateH import whittle
+from .estimateH import whittle, variogram
 from .generators import fbm, arfima

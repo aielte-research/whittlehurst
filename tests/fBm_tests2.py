@@ -2,17 +2,20 @@ import numpy as  np
 import random
 from bokeh.palettes import Category10
 from tqdm import trange
-
 from pathos.multiprocessing import ProcessingPool as Pool
 import time
 
-from whittlehurst import whittle, arfima
+from hurst import compute_Hc
+from antropy import higuchi_fd
+
+from whittlehurst import whittle, variogram, fbm
 
 from utils.metrics import calc_dev, calc_rmse
 from utils.plotters import general_plot, scatter_grid_plot
 
+
 class Model():
-    def __init__(self, num_cores=1, estimator=whittle, take_diff=True):
+    def __init__(self, num_cores=1, estimator=whittle, take_diff=False):
         self.num_cores = num_cores
         self.take_diff = take_diff
         self.estimator = estimator
@@ -26,17 +29,18 @@ class Model():
         return est
 
 workers=32
-epochs=1
-batch_size=1000
+epochs=10
+batch_size=100
 
 models = dict(
-    arfima = Model(workers, lambda seq: whittle(seq,"arfima"), take_diff=False)
+    Whittle=Model(workers, lambda seq: whittle(seq, "fGn")),
+    Variogram=Model(workers, lambda seq: variogram(seq), take_diff=False),
+    Higuchi=Model(workers, lambda seq: 2-higuchi_fd(seq), take_diff=False),
+    R_over_S=Model(workers, lambda seq: compute_Hc(seq, kind='change')[0])
 )
 
 totals = {nam: [] for nam in models.keys()}
 RMSEs = [[] for _ in models]
-origs = []
-ests = {nam: [] for nam in models.keys()}
 
 n_s = [200,400,800,1600,3200,6400,12800,25600]
 for n in n_s:
@@ -53,7 +57,7 @@ for n in n_s:
         for _ in range(batch_size):
             H = random.uniform(0, 1)
             orig.append(H)
-            process = arfima(hurst=H, n = n)
+            process = fbm(H, n)
             inputs.append(np.asarray(process))
 
         for nam, model in models.items():
@@ -62,11 +66,8 @@ for n in n_s:
             est[nam] += list(model(inputs))
             totals[nam][-1] += time.time() - start
 
-    origs.append(orig)
-    
     for nam in models.keys():
         totals[nam][-1] /= epochs*batch_size/workers
-        ests[nam].append(est[nam])
 
     x_range, deviations_lst, biases_lst, deviation_aucs, bias_aucs = calc_dev(
         [orig]*len(models),
@@ -78,15 +79,16 @@ for n in n_s:
         "Ys": biases_lst,
         "Xs": x_range,
         "xlabel": "Hurst",
-        "ylabel": "local bias",
+        "ylabel": "Local Bias",
         "title": "",
-        "fname": f"ARFIMA_Hurst_{n}_biases",
-        "dirname": "./plots/arfima",
+        "fname": f"fBm_Hurst_{n}_biases",
+        "dirname": "./plots/fBm_estimators",
         "markers": None,
         "legend": {
             "location": "bottom_right",
             "labels": list(models.keys())
         },
+        "dashes": ["solid","dashed","dashdot","dotted"],
         "matplotlib": {
             "calc_xtics": False,
             "width": 6,
@@ -102,15 +104,16 @@ for n in n_s:
         "Ys": deviations_lst,
         "Xs": x_range,
         "xlabel": "Hurst",
-        "ylabel": "local deviation",
+        "ylabel": "Local Deviation",
         "title": "",
-        "fname": f"ARFIMA_Hurst_{n}_deviations",
-        "dirname": "./plots/arfima",
+        "fname": f"fBm_Hurst_{n}_deviations",
+        "dirname": "./plots/fBm_estimators",
         "markers": None,
         "legend": {
-            "location": "bottom_right",
+            "location": "bottom_right" if n<1600  else "top_right",
             "labels": list(models.keys())
         },
+        "dashes": ["solid","dashed","dashdot","dotted"],
         "matplotlib": {
             "calc_xtics": False,
             "width": 6,
@@ -135,15 +138,16 @@ for n in n_s:
         "Ys": rmse_lst,
         "Xs": x_range,
         "xlabel": "Hurst",
-        "ylabel": "local RMSE",
+        "ylabel": "Local RMSE",
         "title": "",
-        "fname": f"ARFIMA_Hurst_{n}_RMSE",
-        "dirname": "./plots/arfima",
+        "fname": f"fBm_Hurst_{n}_RMSE",
+        "dirname": "./plots/fBm_estimators",
         "markers": None,
         "legend": {
             "location": "top_right",
             "labels": [f"{nam} RMSE={rmse:.4f}" for nam, rmse in zip(models.keys(),global_rmse)]
         },
+        "dashes": ["solid","dashed","dashdot","dotted"],
         "matplotlib": {
             "calc_xtics": False,
             "width": 6,
@@ -155,67 +159,67 @@ for n in n_s:
         }
     }, export_types=["png", "pdf"])
 
-scatter_grid = [{
-    "Xs": orig,
-    "Ys": est,
-    "xlabel": "real H",
-    "ylabel": "inferred H",
-    #"title": title,
-    "fname": f"ARFIMA_Hurst_scatter_grid",
-    "dirname": "./plots/arfima",
-    "circle_size": 10,
-    "opacity": 0.3,
-    "colors": [Category10[10][i]],
-    "line45_color": "black",
-    "legend": {
-        "location": "bottom_right",
-        "labels": [f"n={n_s[i]}"],
-        "markerscale": 2.0
-    },
-    "matplotlib": {
-        "width": 6,
-        "height": 6,
-        "style": "default"
-    }
-} for i, (orig, est) in enumerate(zip(origs,ests["arfima"]))]
-scatter_grid_plot(
-    params_list=scatter_grid,
-    width=4,
-    export_types=["png", "pdf"],
-    make_subfolder=True,
-    common_limits=True
-)
+    scatter_grid = [{
+        "Xs": orig,
+        "Ys": Ys,
+        "xlabel": "real H",
+        "ylabel": "inferred H",
+        #"title": title,
+        "fname": f"fBm_Hurst_{n}_scatter_grid",
+        "dirname": "./plots/fBm_estimators",
+        "circle_size": 10,
+        "opacity": 0.3,
+        "colors": [Category10[10][i]],
+        "line45_color": "black",
+        "legend": {
+            "location": "bottom_right",
+            "labels": [nam],
+            "markerscale": 2.0
+        },
+        "matplotlib": {
+            "width": 6,
+            "height": 6,
+            "style": "default"
+        }
+    } for i, (nam, Ys) in enumerate(est.items())]
+    scatter_grid_plot(
+        params_list=scatter_grid,
+        width=2,
+        export_types=["png", "pdf"],
+        make_subfolder=True,
+        common_limits=True
+    )
 
-scatter_grid = [{
-    "Xs": orig,
-    "Ys": [y-x for x, y in zip(orig,est)],
-    "xlabel": "H",
-    "ylabel": "Error",
-    #"title": title,
-    "fname": f"ARFIMA_Hurst_error_scatter_grid",
-    "dirname": "./plots/arfima",
-    "circle_size": 10,
-    "opacity": 0.3,
-    "colors": [Category10[10][i]],
-    "line45_color": None,
-    "legend": {
-        "location": "bottom_right",
-        "labels": [f"n={n_s[i]}"],
-        "markerscale": 2.0
-    },
-    "matplotlib": {
-        "width": 6,
-        "height": 6,
-        "style": "default"
-    }
-} for i, (orig, est) in enumerate(zip(origs,ests["arfima"]))]
-scatter_grid_plot(
-    params_list=scatter_grid,
-    width=4,
-    export_types=["png", "pdf"],
-    make_subfolder=True,
-    common_limits=False
-)
+    scatter_grid = [{
+        "Xs": orig,
+        "Ys": [y-x for x, y in zip(orig,Ys)],
+        "xlabel": "H",
+        "ylabel": "Error",
+        #"title": title,
+        "fname": f"fBm_Hurst_{n}_error_scatter_grid",
+        "dirname": "./plots/fBm_estimators",
+        "circle_size": 10,
+        "opacity": 0.3,
+        "colors": [Category10[10][i]],
+        "line45_color": None,
+        "legend": {
+            "location": "bottom_right",
+            "labels": [nam],
+            "markerscale": 2.0
+        },
+        "matplotlib": {
+            "width": 6,
+            "height": 6,
+            "style": "default"
+        }
+    } for i, (nam, Ys) in enumerate(est.items())]
+    scatter_grid_plot(
+        params_list=scatter_grid,
+        width=2,
+        export_types=["png", "pdf"],
+        make_subfolder=True,
+        common_limits=True
+    )
 
 general_plot({
     "Ys": list(totals.values()),
@@ -225,13 +229,14 @@ general_plot({
     "xscale": "log",
     "yscale": "log",
     "title": "",
-    "fname": f"ARFIMA_Hurst_calc_times",
-    "dirname": "./plots/arfima",
+    "fname": f"fBm_Hurst_calc_times",
+    "dirname": "./plots/fBm_estimators",
     "markers": None,
     "legend": {
-        "location": "bottom_right",
+        "location": "top_left",
         "labels": list(totals.keys())
     },
+    "dashes": ["solid","dashed","dashdot","dotted"],
     "matplotlib": {
         "calc_xtics": False,
         "width": 6,
@@ -251,13 +256,14 @@ general_plot({
     "xscale": "log",
     "yscale": "log",
     "title": "",
-    "fname": f"ARFIMA_Hurst_RMSE",
-    "dirname": "./plots/arfima",
+    "fname": f"fBm_Hurst_RMSE",
+    "dirname": "./plots/fBm_estimators",
     "markers": None,
     "legend": {
-        "location": "top_right",
+        "location": "bottom_left",
         "labels": list(models.keys())
     },
+    "dashes": ["solid","dashed","dashdot","dotted"],
     "matplotlib": {
         "calc_xtics": False,
         "width": 6,
@@ -274,17 +280,18 @@ general_plot({
     "Ys": prices.tolist(),
     "Xs": n_s,
     "xlabel": "sequence length (n)",
-    "ylabel": "RMSE * calc_time",
+    "ylabel": "RMSE * Calculation Time",
     "xscale": "log",
     "yscale": "log",
     "title": "",
-    "fname": f"ARFIMA_Hurst_RMSE_per_compute",
-    "dirname": "./plots/arfima",
+    "fname": f"fBm_Hurst_RMSE_compute",
+    "dirname": "./plots/fBm_estimators",
     "markers": None,
     "legend": {
-        "location": "bottom_right",
+        "location": "top_left",
         "labels": list(models.keys())
     },
+    "dashes": ["solid","dashed","dashdot","dotted"],
     "matplotlib": {
         "calc_xtics": False,
         "width": 6,
