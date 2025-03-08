@@ -265,7 +265,7 @@ general_plot({
 general_plot({
     "Ys": RMSEs,
     "Xs": n_s,
-    "xlabel": "sequence length (n)",
+    "xlabel": "Sequence Length",
     "ylabel": "RMSE",
     "xscale": "log",
     "yscale": "log",

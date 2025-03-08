@@ -7,7 +7,7 @@ setup(
     name="whittlehurst",
     version="0.6",
     author="Bálint Csanády",
-    python_requires='>3.8',
+    python_requires='>3.6',
     author_email="csbalint@protonmail.ch",
     license="MIT",
     description="Hurst exponent estimation using Whittle's method",
