@@ -26,8 +26,8 @@ class Model():
         return est
 
 workers=32
-epochs=1
-batch_size=100
+epochs=100
+batch_size=1000
 
 models = dict(
     fGn = Model(workers, lambda seq: whittle(seq,"fGn")),
@@ -49,7 +49,7 @@ for n in n_s:
 
     pbar=trange(epochs)
     for _ in pbar:
-        pbar.set_description("Generating...")
+        pbar.set_description("Generating")
         inputs = []
         for _ in range(batch_size):
             H = random.uniform(0, 1)
@@ -62,7 +62,7 @@ for n in n_s:
             pbar.set_description(nam)
             est[nam] += list(model(inputs))
             totals[nam][-1] += time.time() - start
-    
+
     for nam in models.keys():
         totals[nam][-1] /= epochs*batch_size/workers
 
@@ -78,18 +78,25 @@ for n in n_s:
         "xlabel": "Hurst",
         "ylabel": "Local Bias",
         "title": "",
-        "fname": f"fBm_Hurst_{n}_biases",
+        "fname": f"fBm_Hurst_{n:05d}_biases",
         "dirname": "./plots/fBm_Whittle_variants",
         "markers": None,
+        "baselines":{
+            "labels": [],
+            "values": [0],
+            "vertical": False,
+            "colors": ["grey"],
+            "dashes": ["solid"]
+        },
         "legend": {
             "location": "bottom_right",
-            "labels": list(models.keys())
+            "labels": [f"{nam} (AUC={auc:.4f})" for nam, auc in zip(models.keys(),bias_aucs)]
         },
         "dashes": ["solid","dashed","dashdot","dotted"],
         "matplotlib": {
             "calc_xtics": False,
-            "width": 6,
-            "height": 4,
+            "width": 9,
+            "height": 6,
             "style": "default"
         },
         "color_settings": {
@@ -103,18 +110,18 @@ for n in n_s:
         "xlabel": "Hurst",
         "ylabel": "Local Deviation",
         "title": "",
-        "fname": f"fBm_Hurst_{n}_deviations",
+        "fname": f"fBm_Hurst_{n:05d}_deviations",
         "dirname": "./plots/fBm_Whittle_variants",
         "markers": None,
         "legend": {
             "location": "bottom_right" if n<1600  else "top_right",
-            "labels": list(models.keys())
+            "labels": [f"{nam} (AUC={auc:.4f})" for nam, auc in zip(models.keys(),deviation_aucs)]
         },
         "dashes": ["solid","dashed","dashdot","dotted"],
         "matplotlib": {
             "calc_xtics": False,
-            "width": 6,
-            "height": 4,
+            "width": 9,
+            "height": 6,
             "style": "default"
         },
         "color_settings": {
@@ -137,18 +144,18 @@ for n in n_s:
         "xlabel": "Hurst",
         "ylabel": "Local RMSE",
         "title": "",
-        "fname": f"fBm_Hurst_{n}_RMSE",
+        "fname": f"fBm_Hurst_{n:05d}_RMSE",
         "dirname": "./plots/fBm_Whittle_variants",
         "markers": None,
         "legend": {
             "location": "top_right",
-            "labels": [f"{nam} RMSE={rmse:.4f}" for nam, rmse in zip(models.keys(),global_rmse)]
+            "labels": [f"{nam} (RMSE={rmse:.4f})" for nam, rmse in zip(models.keys(),global_rmse)]
         },
         "dashes": ["solid","dashed","dashdot","dotted"],
         "matplotlib": {
             "calc_xtics": False,
-            "width": 6,
-            "height": 4,
+            "width": 9,
+            "height": 6,
             "style": "default"
         },
         "color_settings": {
@@ -159,10 +166,10 @@ for n in n_s:
     scatter_grid = [{
         "Xs": orig,
         "Ys": Ys,
-        "xlabel": "real H",
-        "ylabel": "inferred H",
+        "xlabel": "Real H",
+        "ylabel": "Inferred H",
         #"title": title,
-        "fname": f"fBm_Hurst_{n}_scatter_grid",
+        "fname": f"fBm_Hurst_{n:05d}_scatter_grid",
         "dirname": "./plots/fBm_Whittle_variants",
         "circle_size": 10,
         "opacity": 0.3,
@@ -170,7 +177,7 @@ for n in n_s:
         "line45_color": "black",
         "legend": {
             "location": "bottom_right",
-            "labels": [nam],
+            "labels": [f"{nam} (RMSE:{global_rmse[i]:.4f}, bias:{bias_aucs[i]:.4f}, dev:{deviation_aucs[i]:.4f})"],
             "markerscale": 2.0
         },
         "matplotlib": {
@@ -193,15 +200,22 @@ for n in n_s:
         "xlabel": "H",
         "ylabel": "Error",
         #"title": title,
-        "fname": f"fBm_Hurst_{n}_error_scatter_grid",
+        "fname": f"fBm_Hurst_{n:05d}_scatter_grid_error",
         "dirname": "./plots/fBm_Whittle_variants",
         "circle_size": 10,
         "opacity": 0.3,
         "colors": [Category10[10][i]],
         "line45_color": None,
+        "baselines":{
+            "labels": [None],
+            "values": [0],
+            "vertical": False,
+            "colors": ["black"],
+            "dashes": ["dashed"]
+        },
         "legend": {
             "location": "bottom_right",
-            "labels": [nam],
+            "labels": [f"{nam} (RMSE:{global_rmse[i]:.4f}, bias:{bias_aucs[i]:.4f}, dev:{deviation_aucs[i]:.4f})"],
             "markerscale": 2.0
         },
         "matplotlib": {

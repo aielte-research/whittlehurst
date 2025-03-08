@@ -127,8 +127,8 @@ general_plot({
         "labels": [],
         "values": [0],
         "vertical": False,
-        "colors": ["black"], # can be shorter than names
-        "dashes": ["dashed"] # can be shorter than namesself.colors
+        "colors": ["black"],
+        "dashes": ["dashed"]
     },
     "legend": {
         "location": "bottom_left",
@@ -172,8 +172,8 @@ general_plot({
 scatter_grid = [{
     "Xs": orig,
     "Ys": est,
-    "xlabel": "real H",
-    "ylabel": "inferred H",
+    "xlabel": "Real H",
+    "ylabel": "Inferred H",
     #"title": title,
     "fname": f"ARFIMA_Hurst_scatter_grid",
     "dirname": "./plots/arfima",

@@ -212,8 +212,10 @@ def bokeh_line45(p, min_x=0, max_x=1, line45_color=None, **kwargs):
     return p
 
 def matplotlib_line45(ax, min_x=0, max_x=1, line45_color=None, **kwargs):
+    xrange = ax.get_xlim()
     if line45_color is not None:
-        ax.plot([min_x, max_x], [min_x, max_x], color=line45_color, linestyle="--", zorder=40)
+        ax.plot(xrange, xrange, color=line45_color, linestyle="--", zorder=40)
+    ax.set_xlim(xrange)
 
 class Plotter():
     def __init__(self, fname="", dirname="", neptune_experiment=None):
@@ -558,17 +560,6 @@ class GeneralPlotter(Plotter):
 
         matplotlib_line45(ax, **self.params)
 
-        if len(self.params["baselines"]["values"]) > 0:
-            for label, value, color, dash in zip(
-                *[self.params["baselines"][k] for k in ["labels", "values", "colors", "dashes"]]
-            ):
-                if self.params["baselines"]["vertical"]:
-                    yrange = [self.params["min_y"], self.params["max_y"]]
-                    ax.plot([value, value], yrange, matplotlib_dashes[dash], label=label, color=color, zorder=20)
-                else:
-                    xrange = [self.params["min_x"], self.params["max_x"]]
-                    ax.plot(xrange, [value, value], matplotlib_dashes[dash], label=label, color=color, zorder=20)
-
         for x, y, dash, color, label, marker, hist in zip(
             self.params["Xs"], self.params["Ys"], self.params["dashes"], self.params["colors"],
             self.params["legend"]["labels"], self.params["markers"], self.params["histogram"]
@@ -625,6 +616,19 @@ class GeneralPlotter(Plotter):
             )
         if matplotlib.get("xtics", None) is not None:
             ax.set_xticks(matplotlib.get("xtics", None))
+
+        if len(self.params["baselines"]["values"]) > 0:
+            for label, value, color, dash in zip(
+                *[self.params["baselines"][k] for k in ["labels", "values", "colors", "dashes"]]
+            ):  
+                if self.params["baselines"]["vertical"]:
+                    yrange = ax.get_ylim()
+                    ax.plot([value, value], yrange, matplotlib_dashes[dash], label=label, color=color, zorder=20)
+                    ax.set_ylim(yrange)
+                else:
+                    xrange = ax.get_xlim()
+                    ax.plot(xrange, [value, value], matplotlib_dashes[dash], label=label, color=color, zorder=20)
+                    ax.set_xlim(xrange)
 
 def general_plot(params, export_types=["json", "html", "png", "pdf"], make_subfolder=True):
     plotter = GeneralPlotter(**params)
@@ -956,28 +960,7 @@ class ScatterPlotter(Plotter):
         ax.set_xlim(self.params["xlim"])
         ax.set_ylim(self.params["ylim"])
 
-        matplotlib_line45(ax, **self.params)
-
-        if len(self.params["baselines"]["values"]) > 0:
-            for label, value, color, dash in zip(
-                *[self.params["baselines"][k] for k in ["labels", "values", "colors", "dashes"]]
-            ):
-                if self.params["baselines"]["vertical"]:
-                    ax.plot(
-                        [value, value], [self.params["min_y"] - 1, self.params["max_y"] + 1],
-                        matplotlib_dashes[dash],
-                        label=label,
-                        color=color,
-                        zorder=20
-                    )
-                else:
-                    ax.plot(
-                        [self.params["min_x"] - 1, self.params["max_x"] + 1], [value, value],
-                        matplotlib_dashes[dash],
-                        label=label,
-                        color=color,
-                        zorder=20
-                    )
+        
 
         if len(self.params["boundary"]["functions"]) > 0:
             x_range = np.linspace(self.params["min_x"], self.params["max_x"], 100)
@@ -1079,6 +1062,33 @@ class ScatterPlotter(Plotter):
                 frame.set_edgecolor(self.params["color_settings"].get("grid_color", "0.9"))
                 for text in legend.get_texts():
                     text.set_color(self.params["color_settings"].get("line_color", "black"))
+
+        matplotlib_line45(ax, **self.params)
+
+        if len(self.params["baselines"]["values"]) > 0:
+            for label, value, color, dash in zip(
+                *[self.params["baselines"][k] for k in ["labels", "values", "colors", "dashes"]]
+            ):
+                if self.params["baselines"]["vertical"]:
+                    yrange = ax.get_ylim()
+                    ax.plot(
+                        [value, value], yrange,
+                        matplotlib_dashes[dash],
+                        label=label,
+                        color=color,
+                        zorder=35
+                    )
+                    ax.set_ylim(yrange)
+                else:
+                    xrange = ax.get_xlim()
+                    ax.plot(
+                        xrange, [value, value],
+                        matplotlib_dashes[dash],
+                        label=label,
+                        color=color,
+                        zorder=35
+                    )
+                    ax.set_xlim(xrange)
 
         matplotlib_setcolors(ax, **self.params["color_settings"])
     

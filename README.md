@@ -2,7 +2,7 @@
 
 ## Overview
 
-This module provides an implementation of Whittle's likelihood method to estimate the Hurst exponent of a time series. The method fits a theoretical spectral density model to the periodogram of a time series. This implementation supports multiple spectral density approximations for fractional Gaussian noise (increments of fractional Brownian motion) and ARFIMA processes.
+This module provides an implementation of Whittle's likelihood method to estimate the Hurst exponent of a time series. The method fits a theoretical spectral density model to the periodogram of the time series realization. This implementation supports multiple spectral density approximations for fractional Gaussian noise (increments of fractional Brownian motion) and ARFIMA processes.
 
 ## Features
 
