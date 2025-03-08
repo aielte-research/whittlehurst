@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="whittlehurst",
-    version="0.4",
+    version="0.5",
     author="Bálint Csanády",
     python_requires='>3.8',
     author_email="csbalint@protonmail.ch",
@@ -18,11 +18,7 @@ setup(
     "hurst, fractional Gaussian noise, fGn, fractional Brownian motion, fBm, ARFIMA, econometrics, time-series",
     packages=find_packages(),
     classifiers=[
-        "Programming Language :: Python :: 3.8",
-        "Programming Language :: Python :: 3.9",
-        "Programming Language :: Python :: 3.10",
-        "Programming Language :: Python :: 3.11",
-        "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
         "Topic :: Scientific/Engineering :: Mathematics",

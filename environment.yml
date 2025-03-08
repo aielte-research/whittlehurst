@@ -18,3 +18,4 @@ dependencies:
     - pathos
     - hurst
     - antropy
+    - whittlehurst

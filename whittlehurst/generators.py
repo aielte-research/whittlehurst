@@ -71,13 +71,13 @@ def arfima(
     sigma: float = 1,
     noise_alpha: float = 2,
     warmup: int = 0,
-    hurst: Optional[float] = None,
+    H: Optional[float] = None,
 ) -> np.ndarray:
     """
     Generate a time series from an ARFIMA process.
 
     The ARFIMA process incorporates an AR component, fractional differencing, and an MA component.
-    If `hurst` is provided, the differencing order `d` is set to `hurst - 0.5`.
+    If `H` is provided, the differencing order `d` is set to `H - 0.5`.
 
     Args:
         ar_params (List[float], optional): Coefficients for the AR component.
@@ -89,14 +89,14 @@ def arfima(
             A value of 2 corresponds to Gaussian noise.
         warmup (int, optional): Number of initial points to generate as a warmup to mitigate
             the effect of initial conditions.
-        hurst (Optional[float], optional): If provided, sets the differencing order d to
-            `hurst - 0.5`.
+        H (Optional[float], optional): If provided, sets the differencing order d to
+            `H - 0.5`.
 
     Returns:
         np.ndarray: Generated time series of length `n`.
     """
-    if hurst is not None:
-        d = hurst - 0.5
+    if H is not None:
+        d = H - 0.5
     ma_series = __ma_model(ma_params, n + warmup, sigma=sigma, noise_alpha=noise_alpha)
     frac_ma = __frac_diff(ma_series, -d)
     series = __arma_model(ar_params, frac_ma)

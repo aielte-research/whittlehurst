@@ -10,31 +10,40 @@ https://onlinelibrary.wiley.com/doi/full/10.1111/jtsa.12750
 
 import numpy as np
 import scipy.optimize as so
-from typing import List
+from typing import Optional, Iterable
 from .spectraldensity import arfima, fGn, fGn_paxson, fGn_truncation, fGn_taylor
 
-
-def whittle(seq, spectrum="fGn", K=None, spectrum_callback=None):
+def whittle(
+    seq: Iterable,
+    spectrum: str = "fGn",
+    K: Optional[int] = None,
+    spectrum_callback = None
+) -> float:
     """
     Estimate the Hurst exponent of a time series using the Whittle likelihood method.
 
     This function computes an estimate of the Hurst exponent (H) by minimizing the Whittle
-    likelihood function. It fits a theoretical spectral density model to the periodogram of
-    the input sequence. The available spectral density models include:
-      - 'fGn' or 'fGn_paxson': Fractional Gaussian noise using Paxson's approximation.
-      - 'fGn_truncated': Fractional Gaussian noise with a truncated calculation of spectral density.
-      - 'arfima': ARFIMA(0, H - 0.5, 0) spectral density model.
+    likelihood function. It fits a theoretical spectral density model to the periodogram of the
+    input sequence. The available spectral density models include:
+      - "fGn": fGn spectrum using Hurwitz's zeta function.
+      - "fGn_paxson": fGn spectrum using Paxson's approximation.
+      - "fGn_truncation": fGn spectrum with a truncated calculation.
+      - "fGn_taylor": fGn spectrum using Taylor-series approximation.
+      - "arfima": ARFIMA(0, H - 0.5, 0) spectral density.
 
     Parameters
     ----------
-    seq : array_like
+    seq : Sequence
         1D array or sequence of numerical values representing the time series.
     spectrum : str, optional
-        A string identifier for the spectral density model to be used. The default is "fGn".
-        Recognized values include "fGn", "fGn_paxson", "fGn_truncated", and "arfima".
+        Identifier for the spectral density model to be used. Recognized values are:
+        "fGn", "fGn_paxson", "fGn_truncation", "fGn_taylor", and "arfima". Default is "fGn".
+    K : int, optional
+        Model-specific parameter used in some spectral models (e.g., "fGn_paxson" and "fGn_truncation").
+        If not provided, a default value is used (50 for "fGn_paxson" and 200 for "fGn_truncation").
     spectrum_callback : callable, optional
         A custom function that computes the theoretical spectral density given H and n.
-        If None, the function will select a default model based on the `spectrum` parameter.
+        If None, a model is selected based on the `spectrum` parameter.
 
     Returns
     -------
@@ -58,11 +67,11 @@ def whittle(seq, spectrum="fGn", K=None, spectrum_callback=None):
             spectrum_callback = fGn
         elif spectrum.lower() == "fgn_paxson":
             if K is None:
-                K=50
+                K = 50
             spectrum_callback = lambda H, n: fGn_paxson(H, n, K)
         elif spectrum.lower() == "fgn_truncation":
             if K is None:
-                K=200
+                K = 200
             spectrum_callback = lambda H, n: fGn_truncation(H, n, K)
         elif spectrum.lower() == "fgn_taylor":
             spectrum_callback = fGn_taylor
@@ -73,8 +82,7 @@ def whittle(seq, spectrum="fGn", K=None, spectrum_callback=None):
 
     n = len(seq)
     tmp = np.abs(np.fft.fft(seq))
-    gammahat = np.exp(
-        2 * np.log(tmp[1:int((n - 1) / 2) + 1])) / (2 * np.pi * n)
+    gammahat = np.exp(2 * np.log(tmp[1 : int((n - 1) / 2) + 1])) / (2 * np.pi * n)
     func = lambda H: __whittlefunc(H, gammahat, n, spectrum_callback)
     return so.fminbound(func, 0, 1)
 
@@ -115,7 +123,7 @@ def __whittlefunc(H, gammahat, n, spectrum_callback):
     qml = gammahat / gammatheo
     return 2 * (2 * np.pi / n) * np.sum(qml)
 
-def variogram(path: List[float], p: float = 1) -> np.float64:
+def variogram(path, p: float = 1) -> float:
     """
     Estimate the Hurst exponent using a p-order variogram estimator.
 

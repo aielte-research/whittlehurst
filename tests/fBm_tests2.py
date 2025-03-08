@@ -15,7 +15,7 @@ from utils.plotters import general_plot, scatter_grid_plot
 
 
 class Model():
-    def __init__(self, num_cores=1, estimator=whittle, take_diff=False):
+    def __init__(self, num_cores=1, estimator=whittle, take_diff=True):
         self.num_cores = num_cores
         self.take_diff = take_diff
         self.estimator = estimator
@@ -33,10 +33,10 @@ epochs=10
 batch_size=100
 
 models = dict(
-    Whittle=Model(workers, lambda seq: whittle(seq, "fGn")),
+    Whittle=Model(workers, lambda seq: whittle(seq, "fGn"), take_diff=True),
     Variogram=Model(workers, lambda seq: variogram(seq), take_diff=False),
     Higuchi=Model(workers, lambda seq: 2-higuchi_fd(seq), take_diff=False),
-    R_over_S=Model(workers, lambda seq: compute_Hc(seq, kind='change')[0])
+    R_over_S=Model(workers, lambda seq: compute_Hc(seq, kind='change')[0], take_diff=True)
 )
 
 totals = {nam: [] for nam in models.keys()}
