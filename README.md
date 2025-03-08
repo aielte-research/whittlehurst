@@ -9,11 +9,11 @@ This implementation supports multiple spectral density approximations for fracti
 
 The Hurst exponent ($H$) controls the roughness, self-similarity, and long-range dependence of fBm paths:
 
-* $H\in(0,0.5):\:$ anti-persistent (mean-reverting) behavior. 
-* $H\in(0.5,1):\:$ persistent behavior.
-* $H=0.5:\: \mathrm{fBm}(H)$ is the Brownian motion.
-* $H\rightarrow 0:\: \mathrm{fBm}(H)\rightarrow$ White noise.
-* $H\rightarrow 1:\: \mathrm{fBm}(H)\rightarrow$ Linear trend.
+* $H\in(0,0.5):~$ anti-persistent (mean-reverting) behavior. 
+* $H\in(0.5,1):~$ persistent behavior.
+* $H=0.5:~ \mathrm{fBm}(H)$ is the Brownian motion.
+* $H\rightarrow 0:~ \mathrm{fBm}(H)\rightarrow$ White noise.
+* $H\rightarrow 1:~ \mathrm{fBm}(H)\rightarrow$ Linear trend.
 
 ## Features
 
