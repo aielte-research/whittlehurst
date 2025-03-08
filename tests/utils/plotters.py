@@ -556,9 +556,7 @@ class GeneralPlotter(Plotter):
         ax.set_title(self.params["title"])
 
         ax.set_xscale(self.params["xscale"])
-        ax.set_yscale(self.params["yscale"])
-
-        matplotlib_line45(ax, **self.params)
+        ax.set_yscale(self.params["yscale"])      
 
         for x, y, dash, color, label, marker, hist in zip(
             self.params["Xs"], self.params["Ys"], self.params["dashes"], self.params["colors"],
@@ -616,6 +614,8 @@ class GeneralPlotter(Plotter):
             )
         if matplotlib.get("xtics", None) is not None:
             ax.set_xticks(matplotlib.get("xtics", None))
+
+        matplotlib_line45(ax, **self.params)
 
         if len(self.params["baselines"]["values"]) > 0:
             for label, value, color, dash in zip(

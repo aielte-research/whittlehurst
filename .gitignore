@@ -1,4 +1,5 @@
-tests/plots
+tests/plots/fBm_estimators
+tests/plots/fBm_Whittle_variants
 
 *.swp
 *.tmp

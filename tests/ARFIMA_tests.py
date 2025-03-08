@@ -128,7 +128,7 @@ general_plot({
         "values": [0],
         "vertical": False,
         "colors": ["black"],
-        "dashes": ["dashed"]
+        "dashes": ["dotted"]
     },
     "legend": {
         "location": "bottom_left",
@@ -206,12 +206,19 @@ scatter_grid = [{
     "xlabel": "H",
     "ylabel": "Error",
     #"title": title,
-    "fname": f"ARFIMA_Hurst_error_scatter_grid",
+    "fname": f"ARFIMA_Hurst_scatter_grid_error",
     "dirname": "./plots/arfima",
     "circle_size": 10,
     "opacity": 0.3,
     "colors": [Category10[10][i]],
     "line45_color": None,
+    "baselines":{
+        "labels": [None],
+        "values": [0],
+        "vertical": False,
+        "colors": ["black"],
+        "dashes": ["dashed"]
+    },
     "legend": {
         "location": "bottom_right",
         "labels": [f"n={n_s[i]}"],
@@ -231,6 +238,8 @@ scatter_grid_plot(
     common_limits=False
 )
 
+print(n_s)
+print(list(totals.values()))
 general_plot({
     "Ys": list(totals.values()),
     "Xs": n_s,

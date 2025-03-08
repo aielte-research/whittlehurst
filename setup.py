@@ -5,12 +5,12 @@ with open("README.md", "r") as fh:
 
 setup(
     name="whittlehurst",
-    version="0.5",
+    version="0.6",
     author="Bálint Csanády",
     python_requires='>3.8',
     author_email="csbalint@protonmail.ch",
     license="MIT",
-    description="Hurst exponent estimation usding Whittle's method",
+    description="Hurst exponent estimation using Whittle's method",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/aielte-research/whittlehurst.git",
