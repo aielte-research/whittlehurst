@@ -9,11 +9,11 @@ This implementation supports multiple spectral density approximations for fracti
 
 The Hurst exponent ($H$) controls the roughness, self-similarity, and long-range dependence of fBm paths:
 
-* $H\in(0,0.5):\:$ anti-persistent (mean-reverting) behavior. 
-* $H\in(0.5,1):\:$ persistent behavior.
-* $H=0.5:\: \mathrm{fBm}(H)$ is the Brownian motion.
-* $H\rightarrow 0:\: \mathrm{fBm}(H)\rightarrow$ White noise.
-* $H\rightarrow 1:\: \mathrm{fBm}(H)\rightarrow$ Linear trend.
+* $H\in(0,0.5):~$ anti-persistent (mean-reverting) behavior. 
+* $H\in(0.5,1):~$ persistent behavior.
+* $H=0.5:~ \mathrm{fBm}(H)$ is the Brownian motion.
+* $H\rightarrow 0:~ \mathrm{fBm}(H)\rightarrow$ White noise.
+* $H\rightarrow 1:~ \mathrm{fBm}(H)\rightarrow$ Linear trend.
 
 ## Features
 
@@ -101,12 +101,26 @@ The following results were calculated on $100000$ fBm realizations of length $n=
 
 ![Scatter Plot](https://github.com/aielte-research/whittlehurst/blob/main/tests/plots/fBm_estimators/png/fBm_Hurst_01600_scatter_grid.png?raw=true "Scatter Plot")
 
-## Notes
+### fGn spectral density approximations
 
-* The default recommended spectral model is `fGn` which relies on Hurwitz's zeta function.
-* `fGn_paxson`, `fGn_truncation`, `fGn_taylor` are experimental approximations of the fGn spectrum. 
-* For models `fGn_paxson` and `fGn_truncation`, the parameter `K` is configurable (defaults: 50 and 200 respectively).  
-* A custom spectral density function may be provided via the `spectrum_callback` parameter.
+The fGn spectral density calculations recommended by Shi et al. are accessible within our package:
+- **` fGn `**: The default recommended spectral model. It relies on the gamma function and the Hurwitz zeta function $\zeta(s,q)=\sum_{j=0}^{\infty}(j+q)^{-s}$ from [scipy](https://scipy.org/).
+$$
+f(\lambda) = \, \frac{\sigma^2}{\pi}\, \Gamma(2H+1)\, \sin(\pi H)\, (1-\cos(\lambda))\,(2\pi)^{-(2H+1)} \left[ \zeta\!\left(2H+1,\, 1-\frac{\lambda}{2\pi}\right) + \zeta\!\left(2H+1,\, \frac{\lambda}{2\pi}\right) \right]
+$$
+- ` fGn_Paxson `: Uses Paxson's approximation with a configurable parameter `K=50`.
+- ` fGn_truncation `: Approximates the infinite series by a configurable truncation `K=200`.
+- ` fGn_Taylor `: Uses a Taylor series expansion to approximate the spectral density at near-zero frequency.
+
+![RMSE by Sequence Length](https://github.com/aielte-research/whittlehurst/blob/main/tests/plots/fBm_Whittle_variants/png/fBm_Hurst_RMSE.png?raw=true "RMSE by Sequence Length")
+
+![Compute Time](https://github.com/aielte-research/whittlehurst/blob/main/tests/plots/fBm_Whittle_variants/png/fBm_Hurst_calc_times.png?raw=true  "Compute Time")
+
+The following results were calculated on $100000$ fBm realizations of length $n=1600$.
+
+![Local RMSE at n=1600](https://github.com/aielte-research/whittlehurst/blob/main/tests/plots/fBm_Whittle_variants/png/fBm_Hurst_01600_RMSE.png?raw=true  "Local RMSE")
+
+![Scatter Plot](https://github.com/aielte-research/whittlehurst/blob/main/tests/plots/fBm_Whittle_variants/png/fBm_Hurst_01600_scatter_grid.png?raw=true "Scatter Plot")
 
 ## References
 

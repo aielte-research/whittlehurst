@@ -56,24 +56,22 @@ def fGn(H: float, n: int):
     numpy.ndarray
         Array of computed spectral density values at the Fourier frequencies.
     """
+    # Exponent for the Hurwitz zeta function
+    s = 2*H + 1
 
     # Compute CH (assuming sigma^2 = 1)
-    CH = gamma(2 * H + 1) * np.sin(np.pi * H) / (2 * np.pi)
+    CH = gamma(s) * np.sin(np.pi * H) / np.pi
 
     # Define Fourier frequencies (positive frequencies)
-    nhalfm = (n - 1) // 2
-    dpl = 2 * np.pi * np.arange(1, nhalfm + 1) / n
-
-    # Exponent for the Hurwitz zeta function
-    s = 1 + 2 * H
+    dpl = np.arange(1, (n-1)//2 + 1) / n
 
     # Compute Hurwitz zeta terms: zeta(s, q) computes ζ(s, q)
-    term1 = zeta(s, 1 - dpl / (2 * np.pi))
-    term2 = zeta(s, dpl / (2 * np.pi))
+    term1 = zeta(s, 1 - dpl)
+    term2 = zeta(s, dpl)
 
     # Compute the spectral density using the computationally feasible expression
-    factor = (2 * np.pi)**(-1 - 2 * H)
-    fspec = 2 * CH * (1 - np.cos(dpl)) * factor * (term1 + term2)
+    
+    fspec = CH * (1 - np.cos(2 * np.pi * dpl)) * (2*np.pi)**(-s) * (term1 + term2)
 
     # Normalize the spectrum (geometric mean normalization)
     norm = np.exp(2 * np.sum(np.log(fspec)) / n)

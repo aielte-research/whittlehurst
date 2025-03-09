@@ -25,13 +25,13 @@ class Model():
             est = p.map(self.estimator, x)
         return est
 
-workers=32
+workers=42
 epochs=100
 batch_size=1000
 
 models = dict(
     fGn = Model(workers, lambda seq: whittle(seq,"fGn")),
-    fGn_Paxon = Model(workers, lambda seq: whittle(seq,"fGn_Paxson")),
+    fGn_Paxson = Model(workers, lambda seq: whittle(seq,"fGn_Paxson")),
     fGn_truncation = Model(workers, lambda seq: whittle(seq,"fGn_truncation")),
     fGn_Taylor = Model(workers, lambda seq: whittle(seq,"fGn_Taylor"))
 )

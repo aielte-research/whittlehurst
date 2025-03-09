@@ -10,11 +10,11 @@ https://onlinelibrary.wiley.com/doi/full/10.1111/jtsa.12750
 
 import numpy as np
 import scipy.optimize as so
-from typing import Optional, Iterable
+from typing import Optional
 from .spectraldensity import arfima, fGn, fGn_paxson, fGn_truncation, fGn_taylor
 
 def whittle(
-    seq: Iterable,
+    seq,
     spectrum: str = "fGn",
     K: Optional[int] = None,
     spectrum_callback = None
@@ -82,46 +82,9 @@ def whittle(
 
     n = len(seq)
     tmp = np.abs(np.fft.fft(seq))
-    gammahat = np.exp(2 * np.log(tmp[1 : int((n - 1) / 2) + 1])) / (2 * np.pi * n)
-    func = lambda H: __whittlefunc(H, gammahat, n, spectrum_callback)
-    return so.fminbound(func, 0, 1)
-
-def __whittlefunc(H, gammahat, n, spectrum_callback):
-    """
-    Evaluate the Whittle likelihood function for a given Hurst exponent.
-
-    This function calculates the value of the Whittle likelihood function for a candidate
-    Hurst exponent H by comparing the empirical spectral density (derived from the periodogram)
-    with the theoretical spectral density computed using the provided `spectrum_callback` function.
-    The resulting value serves as the objective for the optimization routine that estimates H.
-
-    Parameters
-    ----------
-    H : float
-        The candidate Hurst exponent to evaluate.
-    gammahat : numpy.ndarray
-        The empirical spectral density values obtained from the periodogram of the time series.
-    n : int
-        The length of the time series, used for normalization.
-    spectrum_callback : callable
-        A function that returns the theoretical spectral density given a Hurst exponent H and the number
-        of data points n.
-
-    Returns
-    -------
-    float
-        The computed value of the Whittle likelihood function for the candidate H, which is minimized
-        during the estimation process.
-
-    Notes
-    -----
-    The function computes the theoretical spectral density using the provided callback, then calculates
-    the ratio between the empirical and theoretical densities. This ratio is summed and scaled to form the
-    Whittle likelihood value.
-    """
-    gammatheo = spectrum_callback(H, n)
-    qml = gammahat / gammatheo
-    return 2 * (2 * np.pi / n) * np.sum(qml)
+    gammahat = np.exp(2 * np.log(tmp[1 : (n-1)//2 + 1])) / (2 * np.pi * n)
+    func = lambda H: np.sum(gammahat/spectrum_callback(H, n))
+    return so.fminbound(func, 0, 1) # type: ignore
 
 def variogram(path, p: float = 1) -> float:
     """
@@ -152,5 +115,4 @@ def variogram(path, p: float = 1) -> float:
     def vp(increments: float, l: int) -> float:
         return (1 / (2 * (len(path) - l))) * increments
 
-    H = 1 / p * ((np.log(vp(sum2, 2)) - np.log(vp(sum1, 1))) / np.log(2))
-    return H
+    return 1 / p * ((np.log(vp(sum2, 2)) - np.log(vp(sum1, 1))) / np.log(2))
