@@ -110,7 +110,7 @@ for n in n_s:
     general_plot({
         "Ys": deviations_lst,
         "Xs": x_range,
-        "xlabel": "Hurst",
+        "xlabel": "H",
         "ylabel": "Local Deviation",
         "title": "",
         "fname": f"fBm_Hurst_{n:05d}_deviations",
@@ -151,7 +151,7 @@ for n in n_s:
     general_plot({
         "Ys": rmse_lst,
         "Xs": x_range,
-        "xlabel": "Hurst",
+        "xlabel": "H",
         "ylabel": "Local RMSE",
         "title": "",
         "fname": f"fBm_Hurst_{n:05d}_RMSE",

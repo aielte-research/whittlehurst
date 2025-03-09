@@ -25,7 +25,7 @@ def whittle(
     This function computes an estimate of the Hurst exponent (H) by minimizing the Whittle
     likelihood function. It fits a theoretical spectral density model to the periodogram of the
     input sequence. The available spectral density models include:
-      - "fGn": fGn spectrum using Hurwitz's zeta function.
+      - "fGn": fGn spectrum epression using the Hurwitz zeta function.
       - "fGn_paxson": fGn spectrum using Paxson's approximation.
       - "fGn_truncation": fGn spectrum with a truncated calculation.
       - "fGn_taylor": fGn spectrum using Taylor-series approximation.

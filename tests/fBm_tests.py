@@ -75,7 +75,7 @@ for n in n_s:
     general_plot({
         "Ys": biases_lst,
         "Xs": x_range,
-        "xlabel": "Hurst",
+        "xlabel": "H",
         "ylabel": "Local Bias",
         "title": "",
         "fname": f"fBm_Hurst_{n:05d}_biases",
@@ -95,8 +95,8 @@ for n in n_s:
         "dashes": ["solid","dashed","dashdot","dotted"],
         "matplotlib": {
             "calc_xtics": False,
-            "width": 9,
-            "height": 6,
+            "width": 7.5,
+            "height": 5,
             "style": "default"
         },
         "color_settings": {
@@ -107,7 +107,7 @@ for n in n_s:
     general_plot({
         "Ys": deviations_lst,
         "Xs": x_range,
-        "xlabel": "Hurst",
+        "xlabel": "H",
         "ylabel": "Local Deviation",
         "title": "",
         "fname": f"fBm_Hurst_{n:05d}_deviations",
@@ -127,8 +127,8 @@ for n in n_s:
         "dashes": ["solid","dashed","dashdot","dotted"],
         "matplotlib": {
             "calc_xtics": False,
-            "width": 9,
-            "height": 6,
+            "width": 7.5,
+            "height": 5,
             "style": "default"
         },
         "color_settings": {
@@ -148,7 +148,7 @@ for n in n_s:
     general_plot({
         "Ys": rmse_lst,
         "Xs": x_range,
-        "xlabel": "Hurst",
+        "xlabel": "H",
         "ylabel": "Local RMSE",
         "title": "",
         "fname": f"fBm_Hurst_{n:05d}_RMSE",
@@ -168,8 +168,8 @@ for n in n_s:
         "dashes": ["solid","dashed","dashdot","dotted"],
         "matplotlib": {
             "calc_xtics": False,
-            "width": 9,
-            "height": 6,
+            "width": 7.5,
+            "height": 5,
             "style": "default"
         },
         "color_settings": {
