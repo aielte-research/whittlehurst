@@ -116,6 +116,13 @@ for n in n_s:
         "fname": f"fBm_Hurst_{n:05d}_deviations",
         "dirname": "./plots/fBm_estimators",
         "markers": None,
+        "baselines":{
+            "labels": [],
+            "values": [0],
+            "vertical": False,
+            "colors": ["grey"],
+            "dashes": ["solid"]
+        },
         "legend": {
             "location": "top_left",
             "labels": [f"{nam} (AUC={auc:.4f})" for nam, auc in zip(models.keys(),deviation_aucs)]
@@ -150,6 +157,13 @@ for n in n_s:
         "fname": f"fBm_Hurst_{n:05d}_RMSE",
         "dirname": "./plots/fBm_estimators",
         "markers": None,
+        "baselines":{
+            "labels": [],
+            "values": [0],
+            "vertical": False,
+            "colors": ["grey"],
+            "dashes": ["solid"]
+        },
         "legend": {
             "location": "top_left",
             "labels": [f"{nam} (RMSE={rmse:.4f})" for nam, rmse in zip(models.keys(),global_rmse)]
@@ -293,7 +307,7 @@ prices = np.array(RMSEs)*np.array(list(totals.values()))
 general_plot({
     "Ys": prices.tolist(),
     "Xs": n_s,
-    "xlabel": "sequence length (n)",
+    "xlabel": "Sequence Length",
     "ylabel": "RMSE * Calculation Time",
     "xscale": "log",
     "yscale": "log",

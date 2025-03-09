@@ -4,7 +4,13 @@ tests/plots/fBm_estimators/png/*
 !tests/plots/fBm_estimators/png/fBm_Hurst_calc_times.png
 !tests/plots/fBm_estimators/png/fBm_Hurst_RMSE.png
 
-tests/plots/fBm_Whittle_variants/*
+
+tests/plots/fBm_Whittle_variants/pdf/*
+tests/plots/fBm_Whittle_variants/png/*
+!tests/plots/fBm_Whittle_variants/png/fBm_Hurst_01600*
+!tests/plots/fBm_Whittle_variants/png/fBm_Hurst_calc_times.png
+!tests/plots/fBm_Whittle_variants/png/fBm_Hurst_RMSE*
+
 
 *.swp
 *.tmp
