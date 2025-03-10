@@ -94,9 +94,8 @@ The following results were calculated on $100000$ fBm realizations of length $n=
 ### fGn spectral density approximations
 The fGn spectral density calculations recommended by Shi et al. are accessible within our package:
 - **` fGn `**: The default recommended spectral model. It relies on the gamma function and the Hurwitz zeta function $\zeta(s,q)=\sum_{j=0}^{\infty}(j+q)^{-s}$ from [scipy](https://scipy.org/). Terms independent from $H$ or $\lambda$ are omitted, as they are not required for minimizing the Whittle objective. With $s=2H+1$:
-$$
-g(\lambda,H) = \Gamma(s) \sin(\pi H) (1-\cos(\lambda))(2\pi)^{-s}\left[ \zeta\!\left(s, 1-\frac{\lambda}{2\pi}\right) + \zeta\!\left(s, \frac{\lambda}{2\pi}\right) \right].
-$$
+
+  $g(\lambda,H) = \Gamma(s) \sin(\pi H) (1-\cos(\lambda))(2\pi)^{-s}\left[ \zeta\!\left(s, 1-\frac{\lambda}{2\pi}\right) + \zeta\!\left(s, \frac{\lambda}{2\pi}\right) \right].$
 - ` fGn_Paxson `: Uses Paxson's approximation with a configurable parameter `K=50`.
 - ` fGn_truncation `: Approximates the infinite series by a configurable truncation `K=200`.
 - ` fGn_Taylor `: Uses a Taylor series expansion to approximate the spectral density at near-zero frequency.
@@ -113,9 +112,8 @@ The following results were calculated on $100000$ fBm realizations of length $n=
 
 ### ARFIMA
 For the $\text{ARFIMA}(0, H - 0.5, 0)$ process, the spectral density calculation is simpler. With terms independent from $H$ or $\lambda$ omitted, we use:
-$$
-g(\lambda,H) = (2\sin(\lambda/2))^{1 - 2H}
-$$
+
+$g(\lambda,H) = (2\cdot\sin(\lambda/2))^{1 - 2H}$
 
 ![ARFIMA Local RMSE](https://github.com/aielte-research/whittlehurst/blob/main/tests/plots/arfima/png/ARFIMA_Hurst_local_RMSE.png?raw=true "ARFIMA Local RMSE")
 
