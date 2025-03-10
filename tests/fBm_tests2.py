@@ -28,9 +28,9 @@ class Model():
             est = p.map(self.estimator, x)
         return est
 
-workers=32
-epochs=100
-batch_size=1000
+workers=42
+epochs=10
+batch_size=10000
 
 models = {
     "Whittle": Model(workers, lambda seq: whittle(seq, "fGn"), take_diff=True),

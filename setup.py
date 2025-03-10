@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="whittlehurst",
-    version="0.7",
+    version="0.8",
     author="Bálint Csanády",
     python_requires='>3.6',
     author_email="csbalint@protonmail.ch",
