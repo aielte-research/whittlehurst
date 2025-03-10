@@ -25,9 +25,9 @@ class Model():
             est = p.map(self.estimator, x)
         return est
 
-workers=32
-epochs=100
-batch_size=1000
+workers=42
+epochs=10
+batch_size=10000
 
 models = dict(
     arfima = Model(workers, lambda seq: whittle(seq,"arfima"), take_diff=False)
@@ -43,7 +43,7 @@ deviations = []
 deviationaucs = []
 local_RMSEs = []
 
-n_s = [200,400,800,1600,3200,6400,12800,25600]
+n_s = [200,400,800,1600,3200,6400,12800,25600,51200]
 for n in n_s:
     print(f"n={n}")
     orig = []
@@ -93,12 +93,19 @@ for n in n_s:
 general_plot({
     "Ys": local_RMSEs,
     "Xs": x_range,
-    "xlabel": "Hurst",
+    "xlabel": "H",
     "ylabel": "Local RMSE",
     "title": "ARFIMA RMSE Plot by Sequence Length",
     "fname": f"ARFIMA_Hurst_local_RMSE",
     "dirname": "./plots/arfima",
     "markers": None,
+    "baselines":{
+        "labels": [],
+        "values": [0],
+        "vertical": False,
+        "colors": ["black"],
+        "dashes": ["dotted"]
+    },
     "legend": {
         "location": "top_left",
         "labels": [f"n={n_s[i]} RMSE={RMSEs[0][i]:0.4f}" for i in range(len(n_s))]
@@ -117,7 +124,7 @@ general_plot({
 general_plot({
     "Ys": biases,
     "Xs": x_range,
-    "xlabel": "Hurst",
+    "xlabel": "H",
     "ylabel": "Local Bias",
     "title": "ARFIMA Bias Plot by Sequence Length",
     "fname": f"ARFIMA_Hurst_local_biases",
@@ -148,12 +155,19 @@ general_plot({
 general_plot({
     "Ys": deviations,
     "Xs": x_range,
-    "xlabel": "Hurst",
+    "xlabel": "H",
     "ylabel": "Local Deviation",
     "title": "ARFIMA Deviation Plot by Sequence Length",
     "fname": f"ARFIMA_Hurst_local_deviations",
     "dirname": "./plots/arfima",
     "markers": None,
+    "baselines":{
+        "labels": [],
+        "values": [0],
+        "vertical": False,
+        "colors": ["black"],
+        "dashes": ["dotted"]
+    },
     "legend": {
         "location": "top_left",
         "labels": [f"n={n_s[i]} AUC={deviationaucs[i]:0.4f}" for i in range(len(n_s))]
@@ -194,7 +208,7 @@ scatter_grid = [{
 } for i, (orig, est) in enumerate(zip(origs,ests["arfima"]))]
 scatter_grid_plot(
     params_list=scatter_grid,
-    width=4,
+    width=3,
     export_types=["png", "pdf"],
     make_subfolder=True,
     common_limits=True
@@ -232,14 +246,12 @@ scatter_grid = [{
 } for i, (orig, est) in enumerate(zip(origs,ests["arfima"]))]
 scatter_grid_plot(
     params_list=scatter_grid,
-    width=4,
+    width=3,
     export_types=["png", "pdf"],
     make_subfolder=True,
     common_limits=False
 )
 
-print(n_s)
-print(list(totals.values()))
 general_plot({
     "Ys": list(totals.values()),
     "Xs": n_s,
@@ -269,7 +281,7 @@ general_plot({
 general_plot({
     "Ys": RMSEs,
     "Xs": n_s,
-    "xlabel": "sequence length (n)",
+    "xlabel": "Sequence Length",
     "ylabel": "RMSE",
     "xscale": "log",
     "yscale": "log",
@@ -296,7 +308,7 @@ prices = np.array(RMSEs)*np.array(list(totals.values()))
 general_plot({
     "Ys": prices.tolist(),
     "Xs": n_s,
-    "xlabel": "sequence length (n)",
+    "xlabel": "Sequence Length",
     "ylabel": "RMSE * calc_time",
     "xscale": "log",
     "yscale": "log",
