@@ -81,8 +81,7 @@ def whittle(
             raise Exception("Unrecognized spectral model: {}".format(spectrum))
 
     n = len(seq)
-    tmp = np.abs(np.fft.fft(seq))
-    gammahat = np.exp(2 * np.log(tmp[1 : (n-1)//2 + 1])) / (2 * np.pi * n)
+    gammahat = np.abs(np.fft.fft(seq))[1 : (n-1)//2 + 1]**2
     func = lambda H: np.sum(gammahat/spectrum_callback(H, n))
     return so.fminbound(func, 0, 1) # type: ignore
 

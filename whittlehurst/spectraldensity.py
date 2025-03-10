@@ -8,8 +8,12 @@ def arfima(H: float, n: int):
     This function calculates the spectral density for a fractionally integrated process
     with differencing parameter d = H - 0.5. The density is computed for the first (n-1)/2 
     Fourier frequencies using the formula:
-
-        fspec[i] = 2 * π * |2 * sin(dpl[i] / 2)|^(-2*d)
+    
+        f(λ) = (2sin(λ/2))^(-2*d) / (2π)
+        
+    Important Note
+    ----------
+    Terms independent from λ or H are ommited, as they are not required to minimize the whittle objective
 
     Parameters
     ----------
@@ -23,13 +27,9 @@ def arfima(H: float, n: int):
     numpy.ndarray
         Array of spectral density values.
     """
-    d = H - 0.5
-    nhalfm = int((n - 1) / 2)
-    dpl = 2 * np.pi * np.arange(1, nhalfm + 1) / n
-    fspec = np.ones(nhalfm)
-    for i in np.arange(0, nhalfm):
-        fspec[i] = 2 * np.pi * np.abs(2 * np.sin(dpl[i] / 2))**(-2 * d)
-    return fspec
+    
+    dpl = np.arange(1, (n-1)//2 + 1) * (np.pi/n)
+    return np.abs(2 * np.sin(dpl))**(1 - 2*H)
 
 
 def fGn(H: float, n: int):
@@ -44,6 +44,10 @@ def fGn(H: float, n: int):
     
     where CH = (Γ(2H+1) * sin(πH)) / (2π).
     
+    Important Note
+    ----------
+    Terms independent from λ or H are ommited, as they are not required to minimize the whittle objective
+    
     Parameters
     ----------
     H : float
@@ -56,26 +60,18 @@ def fGn(H: float, n: int):
     numpy.ndarray
         Array of computed spectral density values at the Fourier frequencies.
     """
-    # Exponent for the Hurwitz zeta function
     s = 2*H + 1
 
-    # Compute CH (assuming sigma^2 = 1)
-    CH = gamma(s) * np.sin(np.pi * H) / np.pi
-
-    # Define Fourier frequencies (positive frequencies)
+    fspec = gamma(s) * np.sin(np.pi * H) * (2*np.pi)**(-s)
+    
     dpl = np.arange(1, (n-1)//2 + 1) / n
-
-    # Compute Hurwitz zeta terms: zeta(s, q) computes ζ(s, q)
     term1 = zeta(s, 1 - dpl)
     term2 = zeta(s, dpl)
-
-    # Compute the spectral density using the computationally feasible expression
     
-    fspec = CH * (1 - np.cos(2 * np.pi * dpl)) * (2*np.pi)**(-s) * (term1 + term2)
+    fspec *= (1 - np.cos(2 * np.pi * dpl)) * (term1 + term2)
 
-    # Normalize the spectrum (geometric mean normalization)
-    norm = np.exp(2 * np.sum(np.log(fspec)) / n)
-    fspec = fspec / norm
+    # Normalize the spectrum (geometric mean normalization)    
+    fspec /= np.exp(2*np.sum(np.log(fspec)) / n)
 
     return fspec
 
@@ -133,8 +129,7 @@ def fGn_paxson(H: float, n: int, K: int = 50):
     fspec = 2 * CH * (1 - np.cos(dpl)) * (term1 + sum_term2 + correction)
 
     # Normalize the spectrum
-    norm = np.exp(2 * np.sum(np.log(fspec)) / n)
-    fspec = fspec / norm
+    fspec /= np.exp(2 * np.sum(np.log(fspec)) / n)
 
     return fspec
 
@@ -187,8 +182,7 @@ def fGn_truncation(H: float, n: int, K: int = 2000):
     fspec = 2 * CH * (1 - np.cos(dpl)) * summation
 
     # Normalize the spectrum
-    norm = np.exp(2 * np.sum(np.log(fspec)) / n)
-    fspec = fspec / norm
+    fspec /= np.exp(2 * np.sum(np.log(fspec)) / n)
 
     return fspec
 
