@@ -26,8 +26,8 @@ class Model():
         return est
 
 workers=42
-epochs=100
-batch_size=1000
+epochs=10
+batch_size=10000
 
 models = dict(
     fGn = Model(workers, lambda seq: whittle(seq,"fGn")),
