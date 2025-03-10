@@ -2,10 +2,9 @@
 [![pypi](https://img.shields.io/pypi/v/whittlehurst.svg)](https://pypi.org/project/whittlehurst/)
 
 ## Overview
-
-This module provides an implementation of Whittle's likelihood method to estimate the Hurst exponent of a time series.
-The method fits a theoretical spectral density model to the periodogram of the time series realization.
-This implementation supports multiple spectral density approximations for fractional Gaussian noise (increments of fractional Brownian motion) and ARFIMA processes.
+This module implements Whittle's likelihood estimation method for determining the Hurst exponent of a time series.
+The method fits the theoretical spectral density to the periodogram computed from the time series realization.
+This implementation includes spectral density approximations for fractional Gaussian noise (increments of fractional Brownian motion) and ARFIMA processes.
 
 The Hurst exponent ($H$) controls the roughness, self-similarity, and long-range dependence of fBm paths:
 
@@ -16,27 +15,23 @@ The Hurst exponent ($H$) controls the roughness, self-similarity, and long-range
 * $H\rightarrow 1:~ \mathrm{fBm}(H)\rightarrow$ Linear trend.
 
 ## Features
-
 * Spectral density options:
   - **`fGn`**
   - **`arfima`**
   - `fGn_paxson`
   - `fGn_truncation`
   - `fGn_taylor`
-* Flexible interface with an option for a custom spectral density callback.
+* A flexible interface that supports custom spectral density callback functions.
 * Good performance both in terms of speed and accuracy.
 * Included generators for fBm and ARFIMA.
 
 ## Installation
-
 ```
 pip install whittlehurst
 ```
 
 ## Usage
-
 ### fBm and fGn
-
 ```python
 import numpy as np
 from whittlehurst import whittle, fbm
@@ -57,7 +52,6 @@ print(f"Original H: {H:0.04f}, estimated H: {H_est:0.04f}")
 ```
 
 ### ARFIMA
-
 ```python
 import numpy as np
 from whittlehurst import whittle, arfima
@@ -65,22 +59,18 @@ from whittlehurst import whittle, arfima
 # Original Hurst value to test with
 H=0.42
 
-# Generate an ARFIMA(0, H - 0.5, 0) realization
+# Generate a realization of an ARFIMA(0, H - 0.5, 0) process.
 arfima_seq = arfima(H=H, n=10000)
 
 # No need to take the increments here
-# Estimate the "Hurst exponent"
+# Estimate the "Hurst exponent" using the ARFIMA spectrum
 H_est = whittle(arfima_seq, spectrum="arfima")
 
 print(f"Original H: {H:0.04f}, estimated H: {H_est:0.04f}")
 ```
 
-
 ## Performance
-
-
 ### Compared to other methods
-
 Our Whittle-based estimator offers a compelling alternative to traditional approaches for estimating the Hurst exponent. In particular, we compare it with:
 
 - **R/S Method:** Implemented in the [hurst](https://github.com/Mottl/hurst) package, this method has been widely used for estimating $H$.
@@ -91,7 +81,7 @@ Our Whittle-based estimator offers a compelling alternative to traditional appro
 
 ![RMSE by Sequence Length](https://github.com/aielte-research/whittlehurst/blob/main/tests/plots/fBm_estimators/png/fBm_Hurst_RMSE.png?raw=true "RMSE by Sequence Length")
 
-Inference times indicate per input sequence times, and were calculated as: $t = w\cdot T/k$, where $k=100000$ is the number of sequences, $w=32$ is the number of workers (processing threads), and $T$ is the total elapsed time. Single-thread performance is likely to be better, the results are mainly comparative. 
+Inference times represent the computation time per input sequence, and were calculated as: $t = w\cdot T/k$, where $k=100000$ is the number of sequences, $w=42$ is the number of workers (processing threads), and $T$ is the total elapsed time. Single-thread performance is likely superior, the results are mainly comparative. 
 
 ![Compute Time](https://github.com/aielte-research/whittlehurst/blob/main/tests/plots/fBm_estimators/png/fBm_Hurst_calc_times.png?raw=true  "Compute Time")
 
@@ -102,11 +92,10 @@ The following results were calculated on $100000$ fBm realizations of length $n=
 ![Scatter Plot](https://github.com/aielte-research/whittlehurst/blob/main/tests/plots/fBm_estimators/png/fBm_Hurst_01600_scatter_grid.png?raw=true "Scatter Plot")
 
 ### fGn spectral density approximations
-
 The fGn spectral density calculations recommended by Shi et al. are accessible within our package:
-- **` fGn `**: The default recommended spectral model. It relies on the gamma function and the Hurwitz zeta function $\zeta(s,q)=\sum_{j=0}^{\infty}(j+q)^{-s}$ from [scipy](https://scipy.org/).
+- **` fGn `**: The default recommended spectral model. It relies on the gamma function and the Hurwitz zeta function $\zeta(s,q)=\sum_{j=0}^{\infty}(j+q)^{-s}$ from [scipy](https://scipy.org/). Terms independent from $H$ or $\lambda$ are omitted, as they are not required for minimizing the Whittle objective. With $s=2H+1$:
 $$
-f(\lambda) = \frac{\sigma^2}{\pi} \Gamma(2H+1) \sin(\pi H) (1-\cos(\lambda))(2\pi)^{-(2H+1)} \left[ \zeta\!\left(2H+1, 1-\frac{\lambda}{2\pi}\right) + \zeta\!\left(2H+1, \frac{\lambda}{2\pi}\right) \right]
+g(\lambda,H) = \Gamma(s) \sin(\pi H) (1-\cos(\lambda))(2\pi)^{-s}\left[ \zeta\!\left(s, 1-\frac{\lambda}{2\pi}\right) + \zeta\!\left(s, \frac{\lambda}{2\pi}\right) \right].
 $$
 - ` fGn_Paxson `: Uses Paxson's approximation with a configurable parameter `K=50`.
 - ` fGn_truncation `: Approximates the infinite series by a configurable truncation `K=200`.
@@ -122,14 +111,22 @@ The following results were calculated on $100000$ fBm realizations of length $n=
 
 ![Scatter Plot](https://github.com/aielte-research/whittlehurst/blob/main/tests/plots/fBm_Whittle_variants/png/fBm_Hurst_01600_scatter_grid.png?raw=true "Scatter Plot")
 
+### ARFIMA
+For the $\text{ARFIMA}(0, H - 0.5, 0)$ process, the spectral density calculation is simpler. With terms independent from $H$ or $\lambda$ omitted, we use:
+$$
+g(\lambda,H) = (2\sin(\lambda/2))^{1 - 2H}
+$$
+
+![ARFIMA Local RMSE](https://github.com/aielte-research/whittlehurst/blob/main/tests/plots/arfima/png/ARFIMA_Hurst_local_RMSE.png?raw=true "ARFIMA Local RMSE")
+
 ## References
+* The initial implementation of Whittle's method was adapted from:  
+  
+  https://github.com/JFBazille/ICode/blob/master/ICode/estimators/whittle.py
 
-* The initial implementation of Whittle's method was based on:  
-https://github.com/JFBazille/ICode/blob/master/ICode/estimators/whittle.py
+* For further details on spectral density models for fractional Gaussian noise, refer to:
 
-* For details on spectral density models for fractional Gaussian noise, refer to:  
-**Shuping Shi, Jun Yu, and Chen Zhang**. *Fractional gaussian noise: Spectral density and estimation methods*. Journal of Time Series Analysis, 2024. https://onlinelibrary.wiley.com/doi/full/10.1111/jtsa.12750
+  **Shuping Shi, Jun Yu, and Chen Zhang**. *Fractional gaussian noise: Spectral density and estimation methods*. Journal of Time Series Analysis, 2024. https://onlinelibrary.wiley.com/doi/full/10.1111/jtsa.12750
 
 ## License
-
 This project is licensed under the MIT License (c) 2025 Bálint Csanády, aielte-research. See the LICENSE file for details.
