@@ -11,6 +11,13 @@ tests/plots/fBm_Whittle_variants/png/*
 !tests/plots/fBm_Whittle_variants/png/fBm_Hurst_calc_times.png
 !tests/plots/fBm_Whittle_variants/png/fBm_Hurst_RMSE*
 
+tests/plots/fBm_tdml/pdf/*
+tests/plots/fBm_tdml/png/*
+!tests/plots/fBm_tdml/png/TDML_00800*
+!tests/plots/fBm_tdml/png/TDML_06400*
+!tests/plots/fBm_tdml/png/TDML_calc_times.png
+!tests/plots/fBm_tdml/png/TDML_RMSE*
+
 
 *.swp
 *.tmp

@@ -9,7 +9,7 @@ https://onlinelibrary.wiley.com/doi/full/10.1111/jtsa.12750
 """
 
 import numpy as np
-import scipy.optimize as so
+from scipy.optimize import fminbound
 from typing import Optional
 from .spectraldensity import arfima, fGn, fGn_paxson, fGn_truncation, fGn_taylor
 
@@ -83,7 +83,7 @@ def whittle(
     n = len(seq)
     gammahat = np.abs(np.fft.fft(seq))[1 : (n-1)//2 + 1]**2
     func = lambda H: np.sum(gammahat/spectrum_callback(H, n))
-    return so.fminbound(func, 0, 1) # type: ignore
+    return fminbound(func, 0, 1) # type: ignore
 
 def variogram(path, p: float = 1) -> float:
     """
@@ -115,3 +115,46 @@ def variogram(path, p: float = 1) -> float:
         return (1 / (2 * (len(path) - l))) * increments
 
     return 1 / p * ((np.log(vp(sum2, 2)) - np.log(vp(sum1, 1))) / np.log(2))
+
+def tdml(y):
+    """
+    Estimate the Hurst parameter H using the TDML method.
+    y: 1D numpy array of fGn observations
+    Returns the estimated H
+    """
+    # Optimize the negative log likelihood with respect to H
+    return fminbound(lambda H: tdml_negll_fgn(H, y), 0, 1)
+
+def tdml_negll_fgn(H, y):
+    """
+    Computes an optimized version of the negative profile log likelihood
+    for a given H, using the Durbin-Levinson recursion.
+    Any factors independent of H or y have been removed for efficiency.
+    """
+    import numpy as np
+
+    n = len(y)
+    k = np.arange(n)
+    # Compute the theoretical autocovariances for fGn (with sigma^2 = 1)
+    gamma = 0.5 * (np.abs(k-1)**(2*H) - 2*(k**(2*H)) + (k+1)**(2*H))
+    
+    S = y[0]**2
+    log_v_sum = 0.0
+    v_current = 1.0
+    a_prev = np.array([])
+    
+    for t in range(1, n):
+        # When a_prev is empty (t == 1), the dot product yields 0.
+        kappa = (gamma[t] - np.dot(a_prev, gamma[t-1:0:-1])) / v_current
+        a_new = np.empty(t)
+        a_new[:-1] = a_prev - kappa * a_prev[::-1]
+        a_new[-1] = kappa
+        v_current *= (1 - kappa**2)
+        log_v_sum += np.log(v_current)
+        pred = np.dot(a_new, y[t-1::-1])
+        err = y[t] - pred
+        S += err**2 / v_current
+        a_prev = a_new
+        
+    sigma2_hat = S / n
+    return n * np.log(sigma2_hat) + log_v_sum
