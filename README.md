@@ -110,6 +110,21 @@ The following results were calculated on $100000$ fBm realizations of length $n=
 
 ![Scatter Plot](https://github.com/aielte-research/whittlehurst/blob/main/tests/plots/fBm_Whittle_variants/png/fBm_Hurst_01600_scatter_grid.png?raw=true "Scatter Plot")
 
+### TDML for fGn
+
+The Time-Domain Maximum Likelihood (TDML) method estimates $H$ from fGn observations by fitting the likelihood function directly in the time domain.
+TDML performs a similar optimization as the Whittle's method, but Whittle operates in the frequency domain.
+Despite significant optimizations (including a monotonic transformation of the likelihood and efficient implementation via the Durbin-Levinson recursion) TDML remains much slower than Whittle. 
+TDML offers marginally improved accuracy, especially at the edges of the Hurst parameter range.
+
+![Compute Time](https://github.com/aielte-research/whittlehurst/blob/main/tests/plots/fBm_tdml/png/TDML_calc_times.png?raw=true  "Compute Time")
+
+![Local RMSE at n=1600](https://github.com/aielte-research/whittlehurst/blob/main/tests/plots/fBm_tdml/png/TDML_RMSE.png?raw=true  "Local RMSE")
+
+The following result was calculated on fBm realizations of length $n=6400$.
+
+![Local RMSE at n=1600](https://github.com/aielte-research/whittlehurst/blob/main/tests/plots/fBm_tdml/png/TDML_06400_RMSE.png?raw=true  "Local RMSE")
+
 ### ARFIMA
 For the $\text{ARFIMA}(0, H - 0.5, 0)$ process, the spectral density calculation is simpler. With terms independent from $H$ or $\lambda$ omitted, we use:
 
