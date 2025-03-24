@@ -117,6 +117,26 @@ TDML performs a similar root finding as Whittle's method, but Whittle operates i
 Despite significant optimizations (including a monotonic transformation of the likelihood and efficient implementation via the Durbin-Levinson recursion) TDML remains much slower than Whittle. 
 TDML offers marginally improved accuracy, especially at the edges of the Hurst parameter range.
 
+Usage:
+```python
+import numpy as np
+from whittlehurst import tdml, fbm
+
+# Original Hurst value to test with
+H=0.42
+
+# Generate an fBm realization
+fBm_seq = fbm(H=H, n=10000)
+
+# Calculate the increments
+fGn_seq = np.diff(fBm_seq)
+
+# Estimate the Hurst exponent
+H_est = tdml(fGn_seq)
+
+print(f"Original H: {H:0.04f}, estimated H: {H_est:0.04f}")
+```
+
 ![Compute Time](https://github.com/aielte-research/whittlehurst/blob/main/tests/plots/fBm_tdml/png/TDML_calc_times.png?raw=true  "Compute Time")
 
 ![Local RMSE at n=1600](https://github.com/aielte-research/whittlehurst/blob/main/tests/plots/fBm_tdml/png/TDML_RMSE.png?raw=true  "Local RMSE")
