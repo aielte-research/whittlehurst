@@ -113,7 +113,7 @@ The following results were calculated on $100000$ fBm realizations of length $n=
 ### TDML for fGn
 
 The Time-Domain Maximum Likelihood (TDML) method estimates $H$ from fGn observations by fitting the likelihood function directly in the time domain.
-TDML performs a similar optimization as the Whittle's method, but Whittle operates in the frequency domain.
+TDML performs a similar root finding as Whittle's method, but Whittle operates in the frequency domain.
 Despite significant optimizations (including a monotonic transformation of the likelihood and efficient implementation via the Durbin-Levinson recursion) TDML remains much slower than Whittle. 
 TDML offers marginally improved accuracy, especially at the edges of the Hurst parameter range.
 
