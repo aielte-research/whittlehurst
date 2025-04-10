@@ -4,7 +4,6 @@ tests/plots/fBm_estimators/png/*
 !tests/plots/fBm_estimators/png/fBm_Hurst_calc_times.png
 !tests/plots/fBm_estimators/png/fBm_Hurst_RMSE.png
 
-
 tests/plots/fBm_Whittle_variants/pdf/*
 tests/plots/fBm_Whittle_variants/png/*
 !tests/plots/fBm_Whittle_variants/png/fBm_Hurst_01600*
@@ -18,6 +17,12 @@ tests/plots/fBm_tdml/png/*
 !tests/plots/fBm_tdml/png/TDML_calc_times.png
 !tests/plots/fBm_tdml/png/TDML_RMSE*
 
+tests/plots/fBm_Whittle_Paxson/pdf/*
+tests/plots/fBm_Whittle_Paxson/png/*
+tests/plots/fBm_Whittle_Paxson/json/*
+!tests/plots/fBm_Whittle_Paxson/png/fBm_Paxson_02048*
+!tests/plots/fBm_Whittle_Paxson/png/fBm_Paxson_calc_times.png
+!tests/plots/fBm_Whittle_Paxson/png/fBm_Paxson_RMSE.png
 
 *.swp
 *.tmp
