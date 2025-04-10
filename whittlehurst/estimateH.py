@@ -11,7 +11,7 @@ https://onlinelibrary.wiley.com/doi/full/10.1111/jtsa.12750
 import numpy as np
 from scipy.optimize import fminbound
 from typing import Optional
-from .spectraldensity import arfima, fGn, fGn_paxson, fGn_truncation, fGn_taylor
+from .spectraldensity import arfima, fGn_hurwitz, fGn_paxson, fGn_truncation, fGn_taylor
 
 def whittle(
     seq,
@@ -63,12 +63,12 @@ def whittle(
     likelihood function is minimized using `scipy.optimize.fminbound` to estimate the optimal Hurst exponent.
     """
     if spectrum_callback is None:
-        if spectrum.lower() == "fgn":
-            spectrum_callback = fGn
-        elif spectrum.lower() == "fgn_paxson":
+        if spectrum.lower() in ["fgn_paxson", "fgn"]:
             if K is None:
-                K = 50
+                K = 10
             spectrum_callback = lambda H, n: fGn_paxson(H, n, K)
+        elif spectrum.lower() == "fgn_hurwitz":
+            spectrum_callback = fGn_hurwitz
         elif spectrum.lower() == "fgn_truncation":
             if K is None:
                 K = 200
@@ -81,9 +81,8 @@ def whittle(
             raise Exception("Unrecognized spectral model: {}".format(spectrum))
 
     n = len(seq)
-    gammahat = np.abs(np.fft.fft(seq))[1 : (n-1)//2 + 1]**2
-    func = lambda H: np.sum(gammahat/spectrum_callback(H, n))
-    return fminbound(func, 0, 1) # type: ignore
+    I_vals = np.abs(np.fft.fft(seq)[1 : n//2+1])**2
+    return fminbound(lambda H: np.sum(I_vals/spectrum_callback(H, n)), 0, 1) # type: ignore
 
 def variogram(path, p: float = 1) -> float:
     """

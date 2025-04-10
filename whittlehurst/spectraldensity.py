@@ -13,7 +13,7 @@ def arfima(H: float, n: int):
         
     Important Note
     ----------
-    Terms independent from λ or H are ommited, as they are not required to minimize the whittle objective
+    Terms independent from λ or H are omitted, as they are not required to minimize the whittle objective
 
     Parameters
     ----------
@@ -28,25 +28,21 @@ def arfima(H: float, n: int):
         Array of spectral density values.
     """
     
-    dpl = np.arange(1, (n-1)//2 + 1) * (np.pi/n)
+    dpl = np.arange(1, n//2 + 1) * (np.pi/n)
     return np.abs(2 * np.sin(dpl))**(1 - 2*H)
 
 
-def fGn(H: float, n: int):
+def fGn_hurwitz(H: float, n: int):
     """
     Compute the spectral density for fractional Gaussian noise (fGn)
     using the computationally feasible expression from Shi et al. (2024).
 
     This function calculates the spectral density at the Fourier frequencies
-    using the expression:
+    using the expression based on the Hurwitz zeta function:
     
       f(λ) = 2 * CH * (1 - cos(λ)) * (2π)^(-1-2H) * [ζ(1+2H, 1 - λ/(2π)) + ζ(1+2H, λ/(2π))]
     
     where CH = (Γ(2H+1) * sin(πH)) / (2π).
-    
-    Important Note
-    ----------
-    Terms independent from λ or H are ommited, as they are not required to minimize the whittle objective
     
     Parameters
     ----------
@@ -62,20 +58,20 @@ def fGn(H: float, n: int):
     """
     s = 2*H + 1
 
-    fspec = gamma(s) * np.sin(np.pi * H) * (2*np.pi)**(-s)
+    fspec = 2 * gamma(s) * np.sin(np.pi * H) * (2*np.pi)**(-s-1)
     
-    dpl = np.arange(1, (n-1)//2 + 1) / n
+    dpl = np.arange(1, n//2 + 1) / n
     term1 = zeta(s, 1 - dpl)
     term2 = zeta(s, dpl)
     
     fspec *= (1 - np.cos(2 * np.pi * dpl)) * (term1 + term2)
-
-    # Normalize the spectrum (geometric mean normalization)    
-    fspec /= np.exp(2*np.sum(np.log(fspec)) / n)
+    
+    # Normalize the spectral density
+    fspec /= np.exp(np.mean(np.log(fspec)))
 
     return fspec
 
-def fGn_paxson(H: float, n: int, K: int = 50):
+def fGn_paxson(H: float, n: int, K: int = 10):
     """
     Compute the approximate spectral density for fractional Gaussian noise (fGn)
     using Paxson's approximation method.
@@ -99,37 +95,30 @@ def fGn_paxson(H: float, n: int, K: int = 50):
         Array of approximated spectral density values at the Fourier frequencies.
     """
     # Compute parameters
-    gammaH = 2 * H + 1
-    CH = gamma(2 * H + 1) * np.sin(np.pi * H) / (2 * np.pi)
+    s = 2 * H + 1
+    
+    fspec = gamma(s) * np.sin(np.pi * H) / np.pi
 
     # Define Fourier frequencies
-    nhalfm = (n - 1) // 2
-    dpl = 2 * np.pi * np.arange(1, nhalfm + 1) / n  # shape: (nhalfm,)
+    lmbd = 2 * np.pi * np.arange(1, n//2 + 1) / n
 
-    # Paxson's approximation: term1
-    term1 = dpl**(-gammaH)
-
-    # term2: sum_{j=1}^K b(j,λ)
-    j_vals = np.arange(1, K + 1).reshape(-1, 1)  # shape: (K, 1)
-    lam = dpl.reshape(1, -1)  # shape: (1, nhalfm)
-    term2 = (2 * np.pi * j_vals + lam)**(-gammaH) + (2 * np.pi * j_vals -
-                                                     lam)**(-gammaH)
-    sum_term2 = np.sum(term2, axis=0)
+    # Create an array of k values from -K to K
+    k_vals = np.arange(-K, K + 1)
+    
+    # Compute the truncated sum over k for each Fourier frequency
+    truncation = np.sum(np.abs(2 * np.pi * k_vals.reshape(-1, 1) + lmbd.reshape(1, -1)) ** (-s), axis=0)
 
     # Correction term: a(K,λ)
-    def a_term(k, lam_val):
-        return 1 / (4 * np.pi * H) * ((2 * np.pi * k + lam_val)**(1 - gammaH) +
-                                      (2 * np.pi * k - lam_val)**(1 - gammaH))
+    def a_term(k, lmbd_val):
+        return ((2 * np.pi * k + lmbd_val)**(1 - s) + (2 * np.pi * k - lmbd_val)**(1 - s)) / (4 * np.pi * H)
 
-    aK = a_term(K, dpl)
-    aKp1 = a_term(K + 1, dpl)
-    correction = 0.5 * (aK + aKp1)
+    correction = (a_term(K, lmbd) + a_term(K + 1, lmbd)) / 2
 
     # Combine terms to compute the spectral density
-    fspec = 2 * CH * (1 - np.cos(dpl)) * (term1 + sum_term2 + correction)
-
-    # Normalize the spectrum
-    fspec /= np.exp(2 * np.sum(np.log(fspec)) / n)
+    fspec *= (1 - np.cos(lmbd)) * (truncation + correction)
+    
+    # Normalize the spectral density
+    fspec /= np.exp(np.mean(np.log(fspec)))
 
     return fspec
 
@@ -162,27 +151,22 @@ def fGn_truncation(H: float, n: int, K: int = 2000):
         Array of approximated spectral density values at the Fourier frequencies.
     """
     # Compute constant parameters
-    gammaH = 2 * H + 1
-    CH = gamma(2 * H + 1) * np.sin(np.pi * H) / (2 * np.pi)
+    # Compute parameters
+    s = 2 * H + 1
+    
+    fspec = gamma(s) * np.sin(np.pi * H) / np.pi
 
-    # Define Fourier frequencies (exclude zero frequency)
-    nhalfm = (n - 1) // 2
-    dpl = 2 * np.pi * np.arange(1, nhalfm + 1) / n  # shape: (nhalfm,)
+    # Define Fourier frequencies
+    lmbd = 2 * np.pi * np.arange(1, n//2 + 1) / n
 
     # Create an array of k values from -K to K
-    k_vals = np.arange(-K, K + 1).reshape(-1, 1)  # shape: (2K+1, 1)
-
-    # Reshape the frequency array for broadcasting
-    lam = dpl.reshape(1, -1)  # shape: (1, nhalfm)
-
+    k_vals = np.arange(-K, K + 1)
+    
     # Compute the truncated sum over k for each Fourier frequency
-    summation = np.sum(np.abs(2 * np.pi * k_vals + lam) ** (-gammaH), axis=0)
-
-    # Compute the approximate spectral density
-    fspec = 2 * CH * (1 - np.cos(dpl)) * summation
-
-    # Normalize the spectrum
-    fspec /= np.exp(2 * np.sum(np.log(fspec)) / n)
+    fspec *= (1 - np.cos(lmbd)) * np.sum(np.abs(2 * np.pi * k_vals.reshape(-1, 1) + lmbd.reshape(1, -1)) ** (-s), axis=0)
+    
+    # Normalize the spectral density
+    fspec /= np.exp(np.mean(np.log(fspec)))
 
     return fspec
 
@@ -216,14 +200,12 @@ def fGn_taylor(H: float, n: int):
     CH = gamma(2 * H + 1) * np.sin(np.pi * H) / (2 * np.pi)
 
     # Define Fourier frequencies (excluding zero)
-    nhalfm = (n - 1) // 2
-    dpl = 2 * np.pi * np.arange(1, nhalfm + 1) / n  # Fourier frequencies
+    lmbd = 2 * np.pi * np.arange(1, n//2 + 1) / n
 
     # Taylor-series approximation for the spectral density as λ → 0
-    fspec_taylor = CH * dpl**(1 - 2 * H)
+    fspec = CH * lmbd**(1 - 2 * H)
+    
+    # Normalize the spectral density
+    fspec /= np.exp(np.mean(np.log(fspec)))
 
-    # Normalize the spectral density (following the normalization in other methods)
-    norm = np.exp(2 * np.sum(np.log(fspec_taylor)) / n)
-    fspec_taylor /= norm
-
-    return fspec_taylor
+    return fspec
