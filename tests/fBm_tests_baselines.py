@@ -1,15 +1,17 @@
 import numpy as  np
-import random
+import os
 from bokeh.palettes import Category10
 from tqdm import trange
 from pathos.multiprocessing import ProcessingPool as Pool
-import time
+from time import time
 
-from whittlehurst import whittle, fbm, tdml
+from hurst import compute_Hc
+from antropy import higuchi_fd
+from nolds import dfa
+from whittlehurst import whittle, variogram, fbm, tdml
 
 from utils.metrics import calc_dev, calc_rmse
 from utils.plotters import general_plot, scatter_grid_plot
-
 
 class Model():
     def __init__(self, num_cores=1, estimator=whittle, take_diff=True):
@@ -25,41 +27,61 @@ class Model():
             est = p.map(self.estimator, x)
         return est
 
-workers=42
-epochs=10
-batch_size=10000
+workers=32
+epochs=100
+batch_size=1000
 
 models = {
-    "Whittle": Model(workers, lambda seq: whittle(seq, "fGn"), take_diff=True),
-    "TDML": Model(workers, tdml, take_diff=True)
+    "Whittle": Model(workers, lambda seq: whittle(seq,"fGn_Paxson",K=10), take_diff=True),
+    "TDML": Model(workers, tdml, take_diff=True),
+    "Higuchi": Model(workers, lambda seq: 2-higuchi_fd(seq), take_diff=False),
+    "Variogram": Model(workers, variogram, take_diff=False),
+    "DFA": Model(workers, dfa, take_diff=True),
+    "R/S": Model(workers, lambda seq: compute_Hc(seq, kind='change')[0], take_diff=True),
 }
 
 totals = {nam: [] for nam in models.keys()}
 RMSEs = [[] for _ in models]
 
-n_s = [200,400,800,1600,3200,6400]
+n_s = [128,256,512,1024,2048,4096,8192,16384,32768]
 for n in n_s:
     print(f"n={n}")
     orig = []
     est = {nam: [] for nam in models.keys()}
     for nam in totals.keys():
         totals[nam].append(0.0)
+    
+    if n>2500:
+        epochs=75
+    if n>5000:
+        epochs=50
+    if n>10000:
+        epochs=25
+    if n>20000:
+        epochs=12
 
     pbar=trange(epochs)
     for _ in pbar:
         pbar.set_description("Generating")
-        inputs = []
-        for _ in range(batch_size):
-            H = random.uniform(0, 1)
-            orig.append(H)
-            process = fbm(H, n)
-            inputs.append(np.asarray(process))
+        orig_batch = list(np.random.uniform(0,1,batch_size))
+        orig += orig_batch
+        
+        def init_worker():
+            # Combine process ID with the current time in milliseconds
+            seed = (os.getpid() + int(time() * 1000000)) % (2**32)
+            np.random.seed(seed)  
+        
+        with Pool(workers, initializer=init_worker) as p:
+            inputs = p.map(lambda H: np.asarray(fbm(H, n)), orig_batch)
+            
+        keys = list(models.keys())
+        np.random.shuffle(keys)
 
-        for nam, model in models.items():
-            start = time.time()
+        for nam in keys:
+            start = time()
             pbar.set_description(nam)
-            est[nam] += list(model(inputs))
-            totals[nam][-1] += time.time() - start
+            est[nam] += list(models[nam](inputs))
+            totals[nam][-1] += time() - start
 
     for nam in models.keys():
         totals[nam][-1] /= epochs*batch_size/workers
@@ -73,11 +95,11 @@ for n in n_s:
     general_plot({
         "Ys": biases_lst,
         "Xs": x_range,
-        "xlabel": "Hurst",
+        "xlabel": "H",
         "ylabel": "Local Bias",
         "title": "",
-        "fname": f"TDML_{n:05d}_biases",
-        "dirname": "./plots/fBm_tdml",
+        "fname": f"fBm_baselines_{n:05d}_biases",
+        "dirname": "./plots/fBm_baselines",
         "markers": None,
         "baselines":{
             "labels": [],
@@ -90,17 +112,17 @@ for n in n_s:
             "location": "bottom_left",
             "labels": [f"{nam} (AUC={auc:.4f})" for nam, auc in zip(models.keys(),bias_aucs)]
         },
-        "dashes": ["solid","dashed","dashdot","dashdot","dotted"],
+        "dashes": ["solid","dashed","dashdot","dotted","dotted","dotted"],
         "matplotlib": {
             "calc_xtics": False,
-            "width": 9,
-            "height": 6,
+            "width": 7.5,
+            "height": 4.5,
             "style": "default"
         },
         "color_settings": {
             "bg_transparent": False
         }
-    }, export_types=["png", "pdf"])
+    }, export_types=["png", "pdf", "json"])
 
     general_plot({
         "Ys": deviations_lst,
@@ -108,8 +130,8 @@ for n in n_s:
         "xlabel": "H",
         "ylabel": "Local Deviation",
         "title": "",
-        "fname": f"TDML_{n:05d}_deviations",
-        "dirname": "./plots/fBm_tdml",
+        "fname": f"fBm_baselines_{n:05d}_deviations",
+        "dirname": "./plots/fBm_baselines",
         "markers": None,
         "baselines":{
             "labels": [],
@@ -122,17 +144,17 @@ for n in n_s:
             "location": "top_left",
             "labels": [f"{nam} (AUC={auc:.4f})" for nam, auc in zip(models.keys(),deviation_aucs)]
         },
-        "dashes": ["solid","dashed","dashdot","dashdot","dotted"],
+        "dashes": ["solid","dashed","dashdot","dotted","dotted","dotted"],
         "matplotlib": {
             "calc_xtics": False,
-            "width": 9,
-            "height": 6,
+            "width": 7.5,
+            "height": 4.5,
             "style": "default"
         },
         "color_settings": {
             "bg_transparent": False
         }
-    }, export_types=["png", "pdf"])
+    }, export_types=["png", "pdf", "json"])
 
     x_range, rmse_lst, global_rmse = calc_rmse(
         [orig]*len(models),
@@ -149,8 +171,8 @@ for n in n_s:
         "xlabel": "H",
         "ylabel": "Local RMSE",
         "title": "",
-        "fname": f"TDML_{n:05d}_RMSE",
-        "dirname": "./plots/fBm_tdml",
+        "fname": f"fBm_baselines_{n:05d}_RMSE",
+        "dirname": "./plots/fBm_baselines",
         "markers": None,
         "baselines":{
             "labels": [],
@@ -163,17 +185,17 @@ for n in n_s:
             "location": "top_left",
             "labels": [f"{nam} (RMSE={rmse:.4f})" for nam, rmse in zip(models.keys(),global_rmse)]
         },
-        "dashes": ["solid","dashed","dashdot","dashdot","dotted"],
+        "dashes": ["solid","dashed","dashdot","dotted","dotted","dotted"],
         "matplotlib": {
             "calc_xtics": False,
-            "width": 9,
-            "height": 6,
+            "width": 7.5,
+            "height": 4.5,
             "style": "default"
         },
         "color_settings": {
             "bg_transparent": False
         }
-    }, export_types=["png", "pdf"])
+    }, export_types=["png", "pdf", "json"])
 
     scatter_grid = [{
         "Xs": orig,
@@ -181,14 +203,14 @@ for n in n_s:
         "xlabel": "Real H",
         "ylabel": "Inferred H",
         #"title": title,
-        "fname": f"TDML_{n:05d}_scatter_grid",
-        "dirname": "./plots/fBm_tdml",
+        "fname": f"fBm_baselines_{n:05d}_scatter_grid",
+        "dirname": "./plots/fBm_baselines",
         "circle_size": 10,
         "opacity": 0.3,
         "colors": [Category10[10][i]],
         "line45_color": "black",
         "legend": {
-            "location": "bottom_right",
+            "location": "top_left",
             "labels": [f"{nam} (RMSE:{global_rmse[i]:.4f}, bias:{bias_aucs[i]:.4f}, dev:{deviation_aucs[i]:.4f})"],
             "markerscale": 2.0
         },
@@ -201,7 +223,7 @@ for n in n_s:
     scatter_grid_plot(
         params_list=scatter_grid,
         width=3,
-        export_types=["png", "pdf"],
+        export_types=["png", "pdf", "json"],
         make_subfolder=True,
         common_limits=True
     )
@@ -212,8 +234,8 @@ for n in n_s:
         "xlabel": "H",
         "ylabel": "Error",
         #"title": title,
-        "fname": f"TDML_{n:05d}_scatter_grid_error",
-        "dirname": "./plots/fBm_tdml",
+        "fname": f"fBm_baselines_{n:05d}_scatter_grid_error",
+        "dirname": "./plots/fBm_baselines",
         "circle_size": 10,
         "opacity": 0.3,
         "colors": [Category10[10][i]],
@@ -226,7 +248,7 @@ for n in n_s:
             "dashes": ["dashed"]
         },
         "legend": {
-            "location": "bottom_right",
+            "location": "top_left",
             "labels": [f"{nam} (RMSE:{global_rmse[i]:.4f}, bias:{bias_aucs[i]:.4f}, dev:{deviation_aucs[i]:.4f})"],
             "markerscale": 2.0
         },
@@ -239,7 +261,7 @@ for n in n_s:
     scatter_grid_plot(
         params_list=scatter_grid,
         width=3,
-        export_types=["png", "pdf"],
+        export_types=["png", "pdf", "json"],
         make_subfolder=True,
         common_limits=True
     )
@@ -249,17 +271,17 @@ general_plot({
     "Xs": n_s,
     "xlabel": "Sequence Length",
     "ylabel": "Calculation Time (s)",
-    "xscale": "log",
+    "xscale": "log2",
     "yscale": "log",
     "title": "",
-    "fname": f"TDML_calc_times",
-    "dirname": "./plots/fBm_tdml",
+    "fname": f"fBm_baselines_calc_times",
+    "dirname": "./plots/fBm_baselines",
     "markers": None,
     "legend": {
         "location": "top_left",
         "labels": list(totals.keys())
     },
-    "dashes": ["solid","dashed","dashdot","dashdot","dotted"],
+    "dashes": ["solid","dashed","dashdot","dotted","dotted","dotted"],
     "matplotlib": {
         "calc_xtics": False,
         "width": 6,
@@ -269,24 +291,24 @@ general_plot({
     "color_settings": {
         "bg_transparent": False
     }
-}, export_types=["png", "pdf"])
+}, export_types=["png", "pdf", "json"])
 
 general_plot({
     "Ys": RMSEs,
     "Xs": n_s,
     "xlabel": "Sequence Length",
     "ylabel": "RMSE",
-    "xscale": "log",
+    "xscale": "log2",
     "yscale": "log",
     "title": "",
-    "fname": f"TDML_RMSE",
-    "dirname": "./plots/fBm_tdml",
+    "fname": f"fBm_baselines_RMSE",
+    "dirname": "./plots/fBm_baselines",
     "markers": None,
     "legend": {
         "location": "bottom_left",
         "labels": list(models.keys())
     },
-    "dashes": ["solid","dashed","dashdot","dashdot","dotted"],
+    "dashes": ["solid","dashed","dashdot","dotted","dotted","dotted"],
     "matplotlib": {
         "calc_xtics": False,
         "width": 6,
@@ -296,7 +318,7 @@ general_plot({
     "color_settings": {
         "bg_transparent": False
     }
-}, export_types=["png", "pdf"])
+}, export_types=["png", "pdf", "json"])
 
 prices = np.array(RMSEs)*np.array(list(totals.values()))
 general_plot({
@@ -304,17 +326,17 @@ general_plot({
     "Xs": n_s,
     "xlabel": "Sequence Length",
     "ylabel": "RMSE * Calculation Time",
-    "xscale": "log",
+    "xscale": "log2",
     "yscale": "log",
     "title": "",
-    "fname": f"TDML_RMSE_compute",
-    "dirname": "./plots/fBm_tdml",
+    "fname": f"fBm_baselines_RMSE_compute",
+    "dirname": "./plots/fBm_baselines",
     "markers": None,
     "legend": {
         "location": "top_left",
         "labels": list(models.keys())
     },
-    "dashes": ["solid","dashed","dashdot","dashdot","dotted"],
+    "dashes": ["solid","dashed","dashdot","dotted","dotted","dotted"],
     "matplotlib": {
         "calc_xtics": False,
         "width": 6,
@@ -324,4 +346,4 @@ general_plot({
     "color_settings": {
         "bg_transparent": False
     }
-}, export_types=["png", "pdf"])
+}, export_types=["png", "pdf", "json"])
