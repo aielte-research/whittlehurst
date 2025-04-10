@@ -184,7 +184,7 @@ def init_bokeh_figure(
     curdoc().theme = theme
     tools = "pan,box_zoom,wheel_zoom,xwheel_zoom,ywheel_zoom,save,reset"
     if p is None:
-        fig_params = dict(title=title, tools=tools, x_axis_type=xscale, y_axis_type=yscale)
+        fig_params = dict(title=title, tools=tools, x_axis_type=xscale.replace("log2","log"), y_axis_type=yscale.replace("log2","log"))
         if bokeh["width"] is None or bokeh["height"] is None:
             fig_params["sizing_mode"] = 'stretch_both'
         else:
@@ -555,8 +555,14 @@ class GeneralPlotter(Plotter):
         ax.set_ylabel(self.params["ylabel"])
         ax.set_title(self.params["title"])
 
-        ax.set_xscale(self.params["xscale"])
-        ax.set_yscale(self.params["yscale"])      
+        if self.params["xscale"]=="log2":
+            ax.set_xscale("log", base=2)
+        else:
+            ax.set_xscale(self.params["xscale"])
+        if self.params["yscale"]=="log2":
+            ax.set_yscale("log", base=2)
+        else:
+            ax.set_yscale(self.params["yscale"])
 
         for x, y, dash, color, label, marker, hist in zip(
             self.params["Xs"], self.params["Ys"], self.params["dashes"], self.params["colors"],
@@ -954,8 +960,14 @@ class ScatterPlotter(Plotter):
         ax.set_ylabel(self.params["ylabel"])
         ax.set_title(self.params["title"])
 
-        ax.set_xscale(self.params["xscale"])
-        ax.set_yscale(self.params["yscale"])
+        if self.params["xscale"]=="log2":
+            ax.set_xscale("log", base=2)
+        else:
+            ax.set_xscale(self.params["xscale"])
+        if self.params["yscale"]=="log2":
+            ax.set_yscale("log", base=2)
+        else:
+            ax.set_yscale(self.params["yscale"])
 
         ax.set_xlim(self.params["xlim"])
         ax.set_ylim(self.params["ylim"])
@@ -968,11 +980,11 @@ class ScatterPlotter(Plotter):
                 self.params["boundary"]["functions"], self.params["boundary"]["dashes"],
                 self.params["boundary"]["colors"], self.params["boundary"]["legend"]
             ):
-                plt.plot(
+                ax.plot(
                     x_range, [eval(bf) for x in x_range], matplotlib_dashes[dash], color=color, zorder=45, label=label
                 )
 
-        plt.grid(True, color=color_settings["grid_color"], zorder=5, alpha=0.5)
+        ax.grid(True, color=color_settings["grid_color"], zorder=5, alpha=0.5)
 
         if self.params["heatmap"]:
             for x, y, color, label in zip(
