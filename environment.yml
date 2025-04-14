@@ -19,4 +19,4 @@ dependencies:
     - hurst
     - antropy
     - nolds
-    - whittlehurst==1.0
+    - whittlehurst==1.1
