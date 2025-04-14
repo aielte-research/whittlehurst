@@ -9,18 +9,18 @@ This implementation includes spectral density approximations for fractional Gaus
 The Hurst exponent ($H$) controls the roughness, self-similarity, and long-range dependence of fBm paths:
 
 * $H\in(0,0.5):~$ anti-persistent (mean-reverting) behavior. 
-* $H\in(0.5,1):~$ persistent behavior.
 * $H=0.5:~ \mathrm{fBm}(H)$ is the Brownian motion.
-* $H\rightarrow 0:~ \mathrm{fBm}(H)\rightarrow$ White noise.
-* $H\rightarrow 1:~ \mathrm{fBm}(H)\rightarrow$ Linear trend.
+* $H\in(0.5,1):~$ persistent behavior.
+
 
 ## Features
 * Spectral density options:
-  - **`fGn`**
+  - **`fGn`** *(This is the current default option, corresponding to fGn_Paxson, with K=10)*
   - **`arfima`**
-  - `fGn_paxson`
+  - `fGn_Paxson`
+  - `fGn_Hurwitz`
   - `fGn_truncation`
-  - `fGn_taylor`
+  - `fGn_Taylor`
 * A flexible interface that supports custom spectral density callback functions.
 * Good performance both in terms of speed and accuracy.
 * Included generators for fBm and ARFIMA.
@@ -31,7 +31,7 @@ pip install whittlehurst
 ```
 
 ## Usage
-### fBm and fGn
+### Whittle for fBm and fGn
 ```python
 import numpy as np
 from whittlehurst import whittle, fbm
@@ -47,6 +47,33 @@ fGn_seq = np.diff(fBm_seq)
 
 # Estimate the Hurst exponent
 H_est = whittle(fGn_seq)
+
+print(f"Original H: {H:0.04f}, estimated H: {H_est:0.04f}")
+```
+
+### TDML for fGn
+
+The Time-Domain Maximum Likelihood (TDML) method estimates $H$ from fGn observations by fitting the likelihood function directly in the time domain.
+TDML performs a similar root finding as Whittle's method, but Whittle operates in the frequency domain.
+Despite significant optimizations TDML remains much slower than Whittle. 
+TDML offers marginally improved accuracy, especially at the edges of the Hurst parameter range.
+
+Usage:
+```python
+import numpy as np
+from whittlehurst import tdml, fbm
+
+# Original Hurst value to test with
+H=0.42
+
+# Generate an fBm realization
+fBm_seq = fbm(H=H, n=10000)
+
+# Calculate the increments
+fGn_seq = np.diff(fBm_seq)
+
+# Estimate the Hurst exponent
+H_est = tdml(fGn_seq)
 
 print(f"Original H: {H:0.04f}, estimated H: {H_est:0.04f}")
 ```
@@ -77,73 +104,41 @@ Our Whittle-based estimator offers a compelling alternative to traditional appro
 
 - **Higuchi's Method:** Available through the [antropy](https://github.com/raphaelvallat/antropy) package, it performs quite well especially for smaller $H$ values, but its performance drops when $H\rightarrow 1$.
 
+- **DFA:** Detrended Fluctuation Analysis is a popular Hurst estimator robust for non-stationary processes (this robustness is not required in the below tests). Available through the [nolds](https://pypi.org/project/nolds/) package.
+
 - **Variogram:** Our variogram implementation of order $p = 1$ (madogram) accessible as `from whittlehurst import variogram`.
 
-![RMSE by Sequence Length](https://github.com/aielte-research/whittlehurst/blob/main/tests/plots/fBm_estimators/png/fBm_Hurst_RMSE.png?raw=true "RMSE by Sequence Length")
+- **TDML:** Our TDML implementation.
 
-Inference times represent the computation time per input sequence, and were calculated as: $t = w\cdot T/k$, where $k=100000$ is the number of sequences, $w=42$ is the number of workers (processing threads), and $T$ is the total elapsed time. Single-thread performance is likely superior, the results are mainly comparative. 
+![RMSE by Sequence Length](https://github.com/aielte-research/whittlehurst/blob/main/tests/plots/fBm_baselines/png/fBm_baselines_RMSE.png?raw=true "RMSE by Sequence Length")
 
-![Compute Time](https://github.com/aielte-research/whittlehurst/blob/main/tests/plots/fBm_estimators/png/fBm_Hurst_calc_times.png?raw=true  "Compute Time")
+Inference times represent the computation time per input sequence, and were calculated as: $t = w\cdot T/k$, where $k=100000$ is the number of sequences, $w=32$ is the number of workers (processing threads), and $T$ is the total elapsed time. Single-thread performance is likely superior, the results are mainly comparative. 
 
-The following results were calculated on $100000$ fBm realizations of length $n=1600$.
+![Compute Time](https://github.com/aielte-research/whittlehurst/blob/main/tests/plots/fBm_baselines/png/fBm_baselines_calc_times.png?raw=true  "Compute Time")
 
-![Local RMSE at n=1600](https://github.com/aielte-research/whittlehurst/blob/main/tests/plots/fBm_estimators/png/fBm_Hurst_01600_RMSE.png?raw=true  "Local RMSE")
+The following results were calculated on $100000$ fBm realizations of length $n=2048$.
 
-![Scatter Plot](https://github.com/aielte-research/whittlehurst/blob/main/tests/plots/fBm_estimators/png/fBm_Hurst_01600_scatter_grid.png?raw=true "Scatter Plot")
+![Local RMSE at n=2048](https://github.com/aielte-research/whittlehurst/blob/main/tests/plots/fBm_baselines/png/fBm_baselines_02048_RMSE.png?raw=true  "Local RMSE")
+
+![Scatter Plot](https://github.com/aielte-research/whittlehurst/blob/main/tests/plots/fBm_baselines/png/fBm_baselines_02048_scatter_grid.png?raw=true "Scatter Plot")
 
 ### fGn spectral density approximations
 The fGn spectral density calculations recommended by Shi et al. are accessible within our package:
-- **` fGn `**: The default recommended spectral model. It relies on the gamma function and the Hurwitz zeta function $\zeta(s,q)=\sum_{j=0}^{\infty}(j+q)^{-s}$ from [scipy](https://scipy.org/). Terms independent from $H$ or $\lambda$ are omitted, as they are not required for minimizing the Whittle objective. With $s=2H+1$:
 
-  $g(\lambda,H) = \Gamma(s) \sin(\pi H) (1-\cos(\lambda))(2\pi)^{-s}\left[ \zeta\left(s, 1-\frac{\lambda}{2\pi}\right) + \zeta\left(s, \frac{\lambda}{2\pi}\right) \right].$
-- ` fGn_Paxson `: Uses Paxson's approximation with a configurable parameter `K=50`.
+- **` fGn`** or ` fGn_Paxson `: The default recommended spectral model. Uses Paxson's approximation with a configurable parameter `K=10`.
+- ` fGn_Hurwitz `: Relies on the gamma function and the Hurwitz zeta function $\zeta(s,q)=\sum_{j=0}^{\infty}(j+q)^{-s}$ from [scipy](https://scipy.org/).
 - ` fGn_truncation `: Approximates the infinite series by a configurable truncation `K=200`.
 - ` fGn_Taylor `: Uses a Taylor series expansion to approximate the spectral density at near-zero frequency.
 
-![RMSE by Sequence Length](https://github.com/aielte-research/whittlehurst/blob/main/tests/plots/fBm_Whittle_variants/png/fBm_Hurst_RMSE.png?raw=true "RMSE by Sequence Length")
+![RMSE by Sequence Length](https://github.com/aielte-research/whittlehurst/blob/main/tests/plots/fBm_Whittle_variants/png/fBm_spect_RMSE.png?raw=true "RMSE by Sequence Length")
 
-![Compute Time](https://github.com/aielte-research/whittlehurst/blob/main/tests/plots/fBm_Whittle_variants/png/fBm_Hurst_calc_times.png?raw=true  "Compute Time")
+![Compute Time](https://github.com/aielte-research/whittlehurst/blob/main/tests/plots/fBm_Whittle_variants/png/fBm_spect_calc_times.png?raw=true  "Compute Time")
 
-The following results were calculated on $100000$ fBm realizations of length $n=1600$.
+The following results were calculated on $100000$ fBm realizations of length $n=2048$.
 
-![Local RMSE at n=1600](https://github.com/aielte-research/whittlehurst/blob/main/tests/plots/fBm_Whittle_variants/png/fBm_Hurst_01600_RMSE.png?raw=true  "Local RMSE")
+![Local RMSE at n=2048](https://github.com/aielte-research/whittlehurst/blob/main/tests/plots/fBm_Whittle_variants/png/fBm_spect_02048_RMSE.png?raw=true  "Local RMSE")
 
-![Scatter Plot](https://github.com/aielte-research/whittlehurst/blob/main/tests/plots/fBm_Whittle_variants/png/fBm_Hurst_01600_scatter_grid.png?raw=true "Scatter Plot")
-
-### TDML for fGn
-
-The Time-Domain Maximum Likelihood (TDML) method estimates $H$ from fGn observations by fitting the likelihood function directly in the time domain.
-TDML performs a similar root finding as Whittle's method, but Whittle operates in the frequency domain.
-Despite significant optimizations (including a monotonic transformation of the likelihood and efficient implementation via the Durbin-Levinson recursion) TDML remains much slower than Whittle. 
-TDML offers marginally improved accuracy, especially at the edges of the Hurst parameter range.
-
-Usage:
-```python
-import numpy as np
-from whittlehurst import tdml, fbm
-
-# Original Hurst value to test with
-H=0.42
-
-# Generate an fBm realization
-fBm_seq = fbm(H=H, n=10000)
-
-# Calculate the increments
-fGn_seq = np.diff(fBm_seq)
-
-# Estimate the Hurst exponent
-H_est = tdml(fGn_seq)
-
-print(f"Original H: {H:0.04f}, estimated H: {H_est:0.04f}")
-```
-
-![Compute Time](https://github.com/aielte-research/whittlehurst/blob/main/tests/plots/fBm_tdml/png/TDML_calc_times.png?raw=true  "Compute Time")
-
-![Local RMSE at n=1600](https://github.com/aielte-research/whittlehurst/blob/main/tests/plots/fBm_tdml/png/TDML_RMSE.png?raw=true  "Local RMSE")
-
-The following result was calculated on fBm realizations of length $n=6400$.
-
-![Local RMSE at n=1600](https://github.com/aielte-research/whittlehurst/blob/main/tests/plots/fBm_tdml/png/TDML_06400_RMSE.png?raw=true  "Local RMSE")
+![Scatter Plot](https://github.com/aielte-research/whittlehurst/blob/main/tests/plots/fBm_Whittle_variants/png/fBm_spect_02048_scatter_grid.png?raw=true "Scatter Plot")
 
 ### ARFIMA
 For the $\text{ARFIMA}(0, H - 0.5, 0)$ process, the spectral density calculation is simpler. With terms independent from $H$ or $\lambda$ omitted, we use:
