@@ -7,7 +7,9 @@ https://github.com/JFBazille/ICode/blob/master/ICode/estimators/whittle.py
 For fractional Gaussian noise (fractional Brownian motion increments) we use methods for calculating the spectral density as described here:
 https://onlinelibrary.wiley.com/doi/full/10.1111/jtsa.12750
 """
-
+import threadpoolctl
+# Force single-threaded execution for all known thread pools (without this numpy spawns too many processes for long sequences in TDML)
+threadpoolctl.threadpool_limits(limits=1)
 import numpy as np
 from scipy.optimize import fminbound
 from typing import Optional
