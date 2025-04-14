@@ -40,7 +40,7 @@ models = {
 totals = {nam: [] for nam in models.keys()}
 RMSEs = [[] for _ in models]
 
-n_s = [256,512,1024,2048,4096,8192,16384,32768]
+n_s = [128,256,512,1024,2048,4096,8192,16384,32768]
 for n in n_s:
     print(f"n={n}")
     orig = []
@@ -100,7 +100,7 @@ for n in n_s:
             "location": "top_right",
             "labels": [f"{nam} (AUC={auc:.4f})" for nam, auc in zip(models.keys(),bias_aucs)]
         },
-        "dashes": ["solid","dashed","dashdot","dotted"],
+        "dashes": ["solid","dashed","dashdot","dotted","dotted"],
         "matplotlib": {
             "calc_xtics": False,
             "width": 7.5,
@@ -132,7 +132,7 @@ for n in n_s:
             "location": "bottom_right" if n<1600  else "top_right",
             "labels": [f"{nam} (AUC={auc:.4f})" for nam, auc in zip(models.keys(),deviation_aucs)]
         },
-        "dashes": ["solid","dashed","dashdot","dotted"],
+        "dashes": ["solid","dashed","dashdot","dotted","dotted"],
         "matplotlib": {
             "calc_xtics": False,
             "width": 7.5,
@@ -173,7 +173,7 @@ for n in n_s:
             "location": "bottom_right",
             "labels": [f"{nam} (RMSE={rmse:.4f})" for nam, rmse in zip(models.keys(),global_rmse)]
         },
-        "dashes": ["solid","dashed","dashdot","dotted"],
+        "dashes": ["solid","dashed","dashdot","dotted","dotted"],
         "matplotlib": {
             "calc_xtics": False,
             "width": 7.5,
@@ -269,7 +269,7 @@ general_plot({
         "location": "top_left",
         "labels": list(totals.keys())
     },
-    "dashes": ["solid","dashed","dashdot","dotted"],
+    "dashes": ["solid","dashed","dashdot","dotted","dotted"],
     "matplotlib": {
         "calc_xtics": False,
         "width": 6,
@@ -296,7 +296,7 @@ general_plot({
         "location": "bottom_left",
         "labels": list(models.keys())
     },
-    "dashes": ["solid","dashed","dashdot","dotted"],
+    "dashes": ["solid","dashed","dashdot","dotted","dotted"],
     "matplotlib": {
         "calc_xtics": False,
         "width": 6,
@@ -324,7 +324,7 @@ general_plot({
         "location": "top_left",
         "labels": list(models.keys())
     },
-    "dashes": ["solid","dashed","dashdot","dotted"],
+    "dashes": ["solid","dashed","dashdot","dotted","dotted"],
     "matplotlib": {
         "calc_xtics": False,
         "width": 6,

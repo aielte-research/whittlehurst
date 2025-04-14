@@ -1,10 +1,10 @@
 import numpy as  np
-import random
+import os
 from bokeh.palettes import Category10
 from tqdm import trange
 
 from pathos.multiprocessing import ProcessingPool as Pool
-import time
+from time import time
 
 from whittlehurst import whittle, arfima
 
@@ -25,9 +25,9 @@ class Model():
             est = p.map(self.estimator, x)
         return est
 
-workers=42
-epochs=10
-batch_size=10000
+workers=32
+epochs=100
+batch_size=1000
 
 models = dict(
     arfima = Model(workers, lambda seq: whittle(seq,"arfima"), take_diff=False)
@@ -43,8 +43,8 @@ deviations = []
 deviationaucs = []
 local_RMSEs = []
 
-n_s = [200,400,800,1600,3200,6400,12800,25600,51200]
-for n in n_s:
+n_s = [128,256,512,1024,2048,4096,8192,16384,32768]
+for i,n in enumerate(n_s):
     print(f"n={n}")
     orig = []
     est = {nam: [] for nam in models.keys()}
@@ -54,18 +54,23 @@ for n in n_s:
     pbar = trange(epochs)
     for _ in pbar:
         pbar.set_description("Generating")
-        inputs = []
-        for _ in range(batch_size):
-            H = random.uniform(0, 1)
-            orig.append(H)
-            process = arfima(H=H, n=n)
-            inputs.append(np.asarray(process))
+        
+        orig_batch = list(np.random.uniform(0,1,batch_size))
+        orig += orig_batch
+        
+        def init_worker():
+            # Combine process ID with the current time in milliseconds
+            seed = os.getpid() + int(time() * 1000000) % (2**32)
+            np.random.seed(seed)  
+        
+        with Pool(workers, initializer=init_worker) as p:
+            inputs = p.map(lambda H: np.asarray(arfima(H=H, n=n)), orig_batch)
 
         for nam, model in models.items():
-            start = time.time()
+            start = time()
             pbar.set_description(f"Estimating {nam.upper()}")
             est[nam] += list(model(inputs))
-            totals[nam][-1] += time.time() - start
+            totals[nam][-1] += time() - start
 
     origs.append(orig)
 
@@ -87,246 +92,246 @@ for n in n_s:
     deviationaucs += deviation_aucs
     local_RMSEs += rmse_lst
 
-    for i, rmse in enumerate(global_rmse):
-        RMSEs[i].append(rmse)
+    for j, rmse in enumerate(global_rmse):
+        RMSEs[j].append(rmse)
 
-general_plot({
-    "Ys": local_RMSEs,
-    "Xs": x_range,
-    "xlabel": "H",
-    "ylabel": "Local RMSE",
-    "title": "ARFIMA RMSE Plot by Sequence Length",
-    "fname": f"ARFIMA_Hurst_local_RMSE",
-    "dirname": "./plots/arfima",
-    "markers": None,
-    "baselines":{
-        "labels": [],
-        "values": [0],
-        "vertical": False,
-        "colors": ["black"],
-        "dashes": ["dotted"]
-    },
-    "legend": {
-        "location": "top_left",
-        "labels": [f"n={n_s[i]} RMSE={RMSEs[0][i]:0.4f}" for i in range(len(n_s))]
-    },
-    "matplotlib": {
-        "calc_xtics": False,
-        "width": 12,
-        "height": 8,
-        "style": "default"
-    },
-    "color_settings": {
-        "bg_transparent": False
-    }
-}, export_types=["png", "pdf"])
+    general_plot({
+        "Ys": local_RMSEs,
+        "Xs": x_range,
+        "xlabel": "H",
+        "ylabel": "Local RMSE",
+        "title": "ARFIMA RMSE Plot by Sequence Length",
+        "fname": f"ARFIMA_Hurst_local_RMSE",
+        "dirname": "./plots/arfima",
+        "markers": None,
+        "baselines":{
+            "labels": [],
+            "values": [0],
+            "vertical": False,
+            "colors": ["black"],
+            "dashes": ["dashed"]
+        },
+        "legend": {
+            "location": "top_left",
+            "labels": [f"n={n_s[j]} RMSE={RMSEs[0][j]:0.4f}" for j in range(i+1)]
+        },
+        "matplotlib": {
+            "calc_xtics": False,
+            "width": 9,
+            "height": 6,
+            "style": "default"
+        },
+        "color_settings": {
+            "bg_transparent": False
+        }
+    }, export_types=["png", "pdf", "json"])
 
-general_plot({
-    "Ys": biases,
-    "Xs": x_range,
-    "xlabel": "H",
-    "ylabel": "Local Bias",
-    "title": "ARFIMA Bias Plot by Sequence Length",
-    "fname": f"ARFIMA_Hurst_local_biases",
-    "dirname": "./plots/arfima",
-    "markers": None,
-    "baselines":{
-        "labels": [],
-        "values": [0],
-        "vertical": False,
-        "colors": ["black"],
-        "dashes": ["dotted"]
-    },
-    "legend": {
-        "location": "bottom_left",
-        "labels": [f"n={n_s[i]} AUC={biasaucs[i]:0.4f}" for i in range(len(n_s))]
-    },
-    "matplotlib": {
-        "calc_xtics": False,
-        "width": 12,
-        "height": 8,
-        "style": "default"
-    },
-    "color_settings": {
-        "bg_transparent": False
-    }
-}, export_types=["png", "pdf"])
+    general_plot({
+        "Ys": biases,
+        "Xs": x_range,
+        "xlabel": "H",
+        "ylabel": "Local Bias",
+        "title": "ARFIMA Bias Plot by Sequence Length",
+        "fname": f"ARFIMA_Hurst_local_biases",
+        "dirname": "./plots/arfima",
+        "markers": None,
+        "baselines":{
+            "labels": [],
+            "values": [0],
+            "vertical": False,
+            "colors": ["black"],
+            "dashes": ["dashed"]
+        },
+        "legend": {
+            "location": "bottom_left",
+            "labels": [f"n={n_s[j]} AUC={biasaucs[j]:0.4f}" for j in range(i+1)]
+        },
+        "matplotlib": {
+            "calc_xtics": False,
+            "width": 9,
+            "height": 6,
+            "style": "default"
+        },
+        "color_settings": {
+            "bg_transparent": False
+        }
+    }, export_types=["png", "pdf", "json"])
 
-general_plot({
-    "Ys": deviations,
-    "Xs": x_range,
-    "xlabel": "H",
-    "ylabel": "Local Deviation",
-    "title": "ARFIMA Deviation Plot by Sequence Length",
-    "fname": f"ARFIMA_Hurst_local_deviations",
-    "dirname": "./plots/arfima",
-    "markers": None,
-    "baselines":{
-        "labels": [],
-        "values": [0],
-        "vertical": False,
-        "colors": ["black"],
-        "dashes": ["dotted"]
-    },
-    "legend": {
-        "location": "top_left",
-        "labels": [f"n={n_s[i]} AUC={deviationaucs[i]:0.4f}" for i in range(len(n_s))]
-    },
-    "matplotlib": {
-        "calc_xtics": False,
-        "width": 12,
-        "height": 8,
-        "style": "default"
-    },
-    "color_settings": {
-        "bg_transparent": False
-    }
-}, export_types=["png", "pdf"])
+    general_plot({
+        "Ys": deviations,
+        "Xs": x_range,
+        "xlabel": "H",
+        "ylabel": "Local Deviation",
+        "title": "ARFIMA Deviation Plot by Sequence Length",
+        "fname": f"ARFIMA_Hurst_local_deviations",
+        "dirname": "./plots/arfima",
+        "markers": None,
+        "baselines":{
+            "labels": [],
+            "values": [0],
+            "vertical": False,
+            "colors": ["black"],
+            "dashes": ["dashed"]
+        },
+        "legend": {
+            "location": "top_left",
+            "labels": [f"n={n_s[j]} AUC={deviationaucs[j]:0.4f}" for j in range(i+1)]
+        },
+        "matplotlib": {
+            "calc_xtics": False,
+            "width": 9,
+            "height": 6,
+            "style": "default"
+        },
+        "color_settings": {
+            "bg_transparent": False
+        }
+    }, export_types=["png", "pdf", "json"])
 
-scatter_grid = [{
-    "Xs": orig,
-    "Ys": est,
-    "xlabel": "Real H",
-    "ylabel": "Inferred H",
-    #"title": title,
-    "fname": f"ARFIMA_Hurst_scatter_grid",
-    "dirname": "./plots/arfima",
-    "circle_size": 10,
-    "opacity": 0.3,
-    "colors": [Category10[10][i]],
-    "line45_color": "black",
-    "legend": {
-        "location": "bottom_right",
-        "labels": [f"n={n_s[i]}"],
-        "markerscale": 2.0
-    },
-    "matplotlib": {
-        "width": 6,
-        "height": 6,
-        "style": "default"
-    }
-} for i, (orig, est) in enumerate(zip(origs,ests["arfima"]))]
-scatter_grid_plot(
-    params_list=scatter_grid,
-    width=3,
-    export_types=["png", "pdf"],
-    make_subfolder=True,
-    common_limits=True
-)
+    scatter_grid = [{
+        "Xs": orig,
+        "Ys": est,
+        "xlabel": "Real H",
+        "ylabel": "Inferred H",
+        #"title": title,
+        "fname": f"ARFIMA_Hurst_scatter_grid",
+        "dirname": "./plots/arfima",
+        "circle_size": 10,
+        "opacity": 0.3,
+        "colors": [Category10[10][i]],
+        "line45_color": "black",
+        "legend": {
+            "location": "bottom_right",
+            "labels": [f"n={n_s[i]}"],
+            "markerscale": 2.0
+        },
+        "matplotlib": {
+            "width": 5,
+            "height": 5,
+            "style": "default"
+        }
+    } for i, (orig, est) in enumerate(zip(origs,ests["arfima"]))]
+    scatter_grid_plot(
+        params_list=scatter_grid,
+        width=3,
+        export_types=["png", "pdf", "json"],
+        make_subfolder=True,
+        common_limits=True
+    )
 
-scatter_grid = [{
-    "Xs": orig,
-    "Ys": [y-x for x, y in zip(orig,est)],
-    "xlabel": "H",
-    "ylabel": "Error",
-    #"title": title,
-    "fname": f"ARFIMA_Hurst_scatter_grid_error",
-    "dirname": "./plots/arfima",
-    "circle_size": 10,
-    "opacity": 0.3,
-    "colors": [Category10[10][i]],
-    "line45_color": None,
-    "baselines":{
-        "labels": [None],
-        "values": [0],
-        "vertical": False,
-        "colors": ["black"],
-        "dashes": ["dashed"]
-    },
-    "legend": {
-        "location": "bottom_right",
-        "labels": [f"n={n_s[i]}"],
-        "markerscale": 2.0
-    },
-    "matplotlib": {
-        "width": 6,
-        "height": 6,
-        "style": "default"
-    }
-} for i, (orig, est) in enumerate(zip(origs,ests["arfima"]))]
-scatter_grid_plot(
-    params_list=scatter_grid,
-    width=3,
-    export_types=["png", "pdf"],
-    make_subfolder=True,
-    common_limits=False
-)
+    scatter_grid = [{
+        "Xs": orig,
+        "Ys": [y-x for x, y in zip(orig,est)],
+        "xlabel": "H",
+        "ylabel": "Error",
+        #"title": title,
+        "fname": f"ARFIMA_Hurst_scatter_grid_error",
+        "dirname": "./plots/arfima",
+        "circle_size": 10,
+        "opacity": 0.3,
+        "colors": [Category10[10][i]],
+        "line45_color": None,
+        "baselines":{
+            "labels": [None],
+            "values": [0],
+            "vertical": False,
+            "colors": ["black"],
+            "dashes": ["dashed"]
+        },
+        "legend": {
+            "location": "bottom_right",
+            "labels": [f"n={n_s[i]}"],
+            "markerscale": 2.0
+        },
+        "matplotlib": {
+            "width": 5,
+            "height": 5,
+            "style": "default"
+        }
+    } for i, (orig, est) in enumerate(zip(origs,ests["arfima"]))]
+    scatter_grid_plot(
+        params_list=scatter_grid,
+        width=3,
+        export_types=["png", "pdf", "json"],
+        make_subfolder=True,
+        common_limits=False
+    )
 
-general_plot({
-    "Ys": list(totals.values()),
-    "Xs": n_s,
-    "xlabel": "Sequence Length",
-    "ylabel": "Calculation Time (s)",
-    "xscale": "log",
-    "yscale": "log",
-    "title": "",
-    "fname": f"ARFIMA_Hurst_calc_times",
-    "dirname": "./plots/arfima",
-    "markers": None,
-    "legend": {
-        "location": "bottom_right",
-        "labels": list(totals.keys())
-    },
-    "matplotlib": {
-        "calc_xtics": False,
-        "width": 6,
-        "height": 4,
-        "style": "default"
-    },
-    "color_settings": {
-        "bg_transparent": False
-    }
-}, export_types=["png", "pdf"])
+    general_plot({
+        "Ys": list(totals.values()),
+        "Xs": n_s,
+        "xlabel": "Sequence Length",
+        "ylabel": "Calculation Time (s)",
+        "xscale": "log2",
+        "yscale": "log",
+        "title": "",
+        "fname": f"ARFIMA_Hurst_calc_times",
+        "dirname": "./plots/arfima",
+        "markers": None,
+        # "legend": {
+        #     "location": "bottom_right",
+        #     "labels": list(totals.keys())
+        # },
+        "matplotlib": {
+            "calc_xtics": False,
+            "width": 6,
+            "height": 4,
+            "style": "default"
+        },
+        "color_settings": {
+            "bg_transparent": False
+        }
+    }, export_types=["png", "pdf", "json"])
 
-general_plot({
-    "Ys": RMSEs,
-    "Xs": n_s,
-    "xlabel": "Sequence Length",
-    "ylabel": "RMSE",
-    "xscale": "log",
-    "yscale": "log",
-    "title": "",
-    "fname": f"ARFIMA_Hurst_RMSE",
-    "dirname": "./plots/arfima",
-    "markers": None,
-    "legend": {
-        "location": "top_right",
-        "labels": list(models.keys())
-    },
-    "matplotlib": {
-        "calc_xtics": False,
-        "width": 6,
-        "height": 4,
-        "style": "default"
-    },
-    "color_settings": {
-        "bg_transparent": False
-    }
-}, export_types=["png", "pdf"])
+    general_plot({
+        "Ys": RMSEs,
+        "Xs": n_s,
+        "xlabel": "Sequence Length",
+        "ylabel": "RMSE",
+        "xscale": "log2",
+        "yscale": "log",
+        "title": "",
+        "fname": f"ARFIMA_Hurst_RMSE",
+        "dirname": "./plots/arfima",
+        "markers": None,
+        # "legend": {
+        #     "location": "top_right",
+        #     "labels": list(models.keys())
+        # },
+        "matplotlib": {
+            "calc_xtics": False,
+            "width": 6,
+            "height": 4,
+            "style": "default"
+        },
+        "color_settings": {
+            "bg_transparent": False
+        }
+    }, export_types=["png", "pdf", "json"])
 
-prices = np.array(RMSEs)*np.array(list(totals.values()))
-general_plot({
-    "Ys": prices.tolist(),
-    "Xs": n_s,
-    "xlabel": "Sequence Length",
-    "ylabel": "RMSE * calc_time",
-    "xscale": "log",
-    "yscale": "log",
-    "title": "",
-    "fname": f"ARFIMA_Hurst_RMSE_per_compute",
-    "dirname": "./plots/arfima",
-    "markers": None,
-    "legend": {
-        "location": "bottom_right",
-        "labels": list(models.keys())
-    },
-    "matplotlib": {
-        "calc_xtics": False,
-        "width": 6,
-        "height": 4,
-        "style": "default"
-    },
-    "color_settings": {
-        "bg_transparent": False
-    }
-}, export_types=["png", "pdf"])
+    prices = np.array(RMSEs)*np.array(list(totals.values()))
+    general_plot({
+        "Ys": prices.tolist(),
+        "Xs": n_s,
+        "xlabel": "Sequence Length",
+        "ylabel": "RMSE * calc_time",
+        "xscale": "log2",
+        "yscale": "log",
+        "title": "",
+        "fname": f"ARFIMA_Hurst_RMSE_per_compute",
+        "dirname": "./plots/arfima",
+        "markers": None,
+        # "legend": {
+        #     "location": "bottom_right",
+        #     "labels": list(models.keys())
+        # },
+        "matplotlib": {
+            "calc_xtics": False,
+            "width": 6,
+            "height": 4,
+            "style": "default"
+        },
+        "color_settings": {
+            "bg_transparent": False
+        }
+    }, export_types=["png", "pdf", "json"])

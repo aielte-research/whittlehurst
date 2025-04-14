@@ -18,4 +18,5 @@ dependencies:
     - pathos
     - hurst
     - antropy
+    - nolds
     - whittlehurst==1.0

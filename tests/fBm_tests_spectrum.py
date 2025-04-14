@@ -2,7 +2,6 @@ import numpy as  np
 import os
 from bokeh.palettes import Category10
 from tqdm import trange
-
 from pathos.multiprocessing import ProcessingPool as Pool
 from time import time
 
@@ -39,14 +38,20 @@ models = {
 totals = {nam: [] for nam in models.keys()}
 RMSEs = [[] for _ in models]
 
-n_s = [256,512,1024,2048,4096,8192,16384,32768]
+n_s = [128,256,512,1024,2048,4096,8192,16384,32768]
 for n in n_s:
     print(f"n={n}")
     orig = []
     est = {nam: [] for nam in models.keys()}
     for nam in totals.keys():
         totals[nam].append(0.0)
-
+    if n>5000:
+        epochs=64
+    if n>10000:
+        epochs=32
+    if n>20000:
+        epochs=16
+    
     pbar=trange(epochs)
     for _ in pbar:
         pbar.set_description("Generating")
@@ -198,12 +203,12 @@ for n in n_s:
         "line45_color": "black",
         "legend": {
             "location": "top_left",
-            "labels": [f"{nam} (RMSE:{global_rmse[i]:.4f}, bias:{bias_aucs[i]:.4f}, dev:{deviation_aucs[i]:.4f})"],
+            "labels": [f"{nam}\nRMSE:{global_rmse[i]:.4f}\nbias:{bias_aucs[i]:.4f}\ndev:{deviation_aucs[i]:.4f}"],
             "markerscale": 2.0
         },
         "matplotlib": {
-            "width": 6.5,
-            "height": 6.5,
+            "width": 4,
+            "height": 4,
             "style": "default"
         }
     } for i, (nam, Ys) in enumerate(est.items())]
@@ -236,12 +241,12 @@ for n in n_s:
         },
         "legend": {
             "location": "top_left",
-            "labels": [f"{nam} (RMSE:{global_rmse[i]:.4f}, bias:{bias_aucs[i]:.4f}, dev:{deviation_aucs[i]:.4f})"],
+            "labels": [f"{nam}\nRMSE:{global_rmse[i]:.4f}\nbias:{bias_aucs[i]:.4f}\ndev:{deviation_aucs[i]:.4f}"],
             "markerscale": 2.0
         },
         "matplotlib": {
-            "width": 6.5,
-            "height": 6.5,
+            "width": 4,
+            "height": 4,
             "style": "default"
         }
     } for i, (nam, Ys) in enumerate(est.items())]
@@ -253,84 +258,84 @@ for n in n_s:
         common_limits=True
     )
 
-general_plot({
-    "Ys": list(totals.values()),
-    "Xs": n_s,
-    "xlabel": "Sequence Length",
-    "ylabel": "Calculation Time (s)",
-    "xscale": "log2",
-    "yscale": "log",
-    "title": "",
-    "fname": f"fBm_spect_calc_times",
-    "dirname": "./plots/fBm_Whittle_variants",
-    "markers": None,
-    "legend": {
-        "location": "top_left",
-        "labels": list(totals.keys())
-    },
-    "dashes": ["solid","dashed","dashdot","dotted"],
-    "matplotlib": {
-        "calc_xtics": False,
-        "width": 6,
-        "height": 4,
-        "style": "default"
-    },
-    "color_settings": {
-        "bg_transparent": False
-    }
-}, export_types=["png", "pdf", "json"])
+    general_plot({
+        "Ys": list(totals.values()),
+        "Xs": n_s,
+        "xlabel": "Sequence Length",
+        "ylabel": "Calculation Time (s)",
+        "xscale": "log2",
+        "yscale": "log",
+        "title": "",
+        "fname": f"fBm_spect_calc_times",
+        "dirname": "./plots/fBm_Whittle_variants",
+        "markers": None,
+        "legend": {
+            "location": "top_left",
+            "labels": list(totals.keys())
+        },
+        "dashes": ["solid","dashed","dashdot","dotted"],
+        "matplotlib": {
+            "calc_xtics": False,
+            "width": 6,
+            "height": 4,
+            "style": "default"
+        },
+        "color_settings": {
+            "bg_transparent": False
+        }
+    }, export_types=["png", "pdf", "json"])
 
-general_plot({
-    "Ys": RMSEs,
-    "Xs": n_s,
-    "xlabel": "Sequence Length",
-    "ylabel": "RMSE",
-    "xscale": "log2",
-    "yscale": "log",
-    "title": "",
-    "fname": f"fBm_spect_RMSE",
-    "dirname": "./plots/fBm_Whittle_variants",
-    "markers": None,
-    "legend": {
-        "location": "bottom_left",
-        "labels": list(models.keys())
-    },
-    "dashes": ["solid","dashed","dashdot","dotted"],
-    "matplotlib": {
-        "calc_xtics": False,
-        "width": 6,
-        "height": 4,
-        "style": "default"
-    },
-    "color_settings": {
-        "bg_transparent": False
-    }
-}, export_types=["png", "pdf", "json"])
+    general_plot({
+        "Ys": RMSEs,
+        "Xs": n_s,
+        "xlabel": "Sequence Length",
+        "ylabel": "RMSE",
+        "xscale": "log2",
+        "yscale": "log",
+        "title": "",
+        "fname": f"fBm_spect_RMSE",
+        "dirname": "./plots/fBm_Whittle_variants",
+        "markers": None,
+        "legend": {
+            "location": "bottom_left",
+            "labels": list(models.keys())
+        },
+        "dashes": ["solid","dashed","dashdot","dotted"],
+        "matplotlib": {
+            "calc_xtics": False,
+            "width": 6,
+            "height": 4,
+            "style": "default"
+        },
+        "color_settings": {
+            "bg_transparent": False
+        }
+    }, export_types=["png", "pdf", "json"])
 
-prices = np.array(RMSEs)*np.array(list(totals.values()))
-general_plot({
-    "Ys": prices.tolist(),
-    "Xs": n_s,
-    "xlabel": "Sequence Length",
-    "ylabel": "RMSE * Calculation Time",
-    "xscale": "log2",
-    "yscale": "log",
-    "title": "",
-    "fname": f"fBm_spect_RMSE_compute",
-    "dirname": "./plots/fBm_Whittle_variants",
-    "markers": None,
-    "legend": {
-        "location": "top_left",
-        "labels": list(models.keys())
-    },
-    "dashes": ["solid","dashed","dashdot","dotted"],
-    "matplotlib": {
-        "calc_xtics": False,
-        "width": 6,
-        "height": 4,
-        "style": "default"
-    },
-    "color_settings": {
-        "bg_transparent": False
-    }
-}, export_types=["png", "pdf", "json"])
+    prices = np.array(RMSEs)*np.array(list(totals.values()))
+    general_plot({
+        "Ys": prices.tolist(),
+        "Xs": n_s,
+        "xlabel": "Sequence Length",
+        "ylabel": "RMSE * Calculation Time",
+        "xscale": "log2",
+        "yscale": "log",
+        "title": "",
+        "fname": f"fBm_spect_RMSE_compute",
+        "dirname": "./plots/fBm_Whittle_variants",
+        "markers": None,
+        "legend": {
+            "location": "top_left",
+            "labels": list(models.keys())
+        },
+        "dashes": ["solid","dashed","dashdot","dotted"],
+        "matplotlib": {
+            "calc_xtics": False,
+            "width": 6,
+            "height": 4,
+            "style": "default"
+        },
+        "color_settings": {
+            "bg_transparent": False
+        }
+    }, export_types=["png", "pdf", "json"])
