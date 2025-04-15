@@ -35,6 +35,7 @@ models = {
     "Paxson K=4": Model(workers, lambda seq: whittle(seq,"fGn_Paxson",K=4)),
     "Paxson K=2": Model(workers, lambda seq: whittle(seq,"fGn_Paxson",K=2)),
     "Paxson K=1": Model(workers, lambda seq: whittle(seq,"fGn_Paxson",K=1)),
+    "truncation K=200": Model(workers, lambda seq: whittle(seq,"fGn_truncation",K=200)),
 }
 
 totals = {nam: [] for nam in models.keys()}
@@ -47,6 +48,12 @@ for n in n_s:
     est = {nam: [] for nam in models.keys()}
     for nam in totals.keys():
         totals[nam].append(0.0)
+    if n>5000:
+        epochs=64
+    if n>10000:
+        epochs=32
+    if n>20000:
+        epochs=16
 
     pbar=trange(epochs)
     for _ in pbar:
@@ -97,10 +104,10 @@ for n in n_s:
             "dashes": ["solid"]
         },
         "legend": {
-            "location": "top_right",
+            "location": "bottom_right",
             "labels": [f"{nam} (AUC={auc:.4f})" for nam, auc in zip(models.keys(),bias_aucs)]
         },
-        "dashes": ["solid","dashed","dashdot","dotted","dotted"],
+        "dashes": ["solid","dashed","dashdot","dotted","dotted","dotted"],
         "matplotlib": {
             "calc_xtics": False,
             "width": 7.5,
@@ -132,7 +139,7 @@ for n in n_s:
             "location": "bottom_right" if n<1600  else "top_right",
             "labels": [f"{nam} (AUC={auc:.4f})" for nam, auc in zip(models.keys(),deviation_aucs)]
         },
-        "dashes": ["solid","dashed","dashdot","dotted","dotted"],
+        "dashes": ["solid","dashed","dashdot","dotted","dotted","dotted"],
         "matplotlib": {
             "calc_xtics": False,
             "width": 7.5,
@@ -173,7 +180,7 @@ for n in n_s:
             "location": "bottom_right",
             "labels": [f"{nam} (RMSE={rmse:.4f})" for nam, rmse in zip(models.keys(),global_rmse)]
         },
-        "dashes": ["solid","dashed","dashdot","dotted","dotted"],
+        "dashes": ["solid","dashed","dashdot","dotted","dotted","dotted"],
         "matplotlib": {
             "calc_xtics": False,
             "width": 7.5,
@@ -210,7 +217,7 @@ for n in n_s:
     } for i, (nam, Ys) in enumerate(est.items())]
     scatter_grid_plot(
         params_list=scatter_grid,
-        width=2,
+        width=3,
         export_types=["png", "pdf", "json"],
         make_subfolder=True,
         common_limits=True
@@ -248,90 +255,90 @@ for n in n_s:
     } for i, (nam, Ys) in enumerate(est.items())]
     scatter_grid_plot(
         params_list=scatter_grid,
-        width=2,
+        width=3,
         export_types=["png", "pdf", "json"],
         make_subfolder=True,
         common_limits=True
     )
 
-general_plot({
-    "Ys": list(totals.values()),
-    "Xs": n_s,
-    "xlabel": "Sequence Length",
-    "ylabel": "Calculation Time (s)",
-    "xscale": "log2",
-    "yscale": "log",
-    "title": "",
-    "fname": f"fBm_Paxson_calc_times",
-    "dirname": "./plots/fBm_Whittle_Paxson",
-    "markers": None,
-    "legend": {
-        "location": "top_left",
-        "labels": list(totals.keys())
-    },
-    "dashes": ["solid","dashed","dashdot","dotted","dotted"],
-    "matplotlib": {
-        "calc_xtics": False,
-        "width": 6,
-        "height": 4,
-        "style": "default"
-    },
-    "color_settings": {
-        "bg_transparent": False
-    }
-}, export_types=["png", "pdf", "json"])
+    general_plot({
+        "Ys": list(totals.values()),
+        "Xs": n_s,
+        "xlabel": "Sequence Length",
+        "ylabel": "Calculation Time (s)",
+        "xscale": "log2",
+        "yscale": "log",
+        "title": "",
+        "fname": f"fBm_Paxson_calc_times",
+        "dirname": "./plots/fBm_Whittle_Paxson",
+        "markers": None,
+        "legend": {
+            "location": "top_left",
+            "labels": list(totals.keys())
+        },
+        "dashes": ["solid","dashed","dashdot","dotted","dotted","dotted"],
+        "matplotlib": {
+            "calc_xtics": False,
+            "width": 6,
+            "height": 4,
+            "style": "default"
+        },
+        "color_settings": {
+            "bg_transparent": False
+        }
+    }, export_types=["png", "pdf", "json"])
 
-general_plot({
-    "Ys": RMSEs,
-    "Xs": n_s,
-    "xlabel": "Sequence Length",
-    "ylabel": "RMSE",
-    "xscale": "log2",
-    "yscale": "log",
-    "title": "",
-    "fname": f"fBm_Paxson_RMSE",
-    "dirname": "./plots/fBm_Whittle_Paxson",
-    "markers": None,
-    "legend": {
-        "location": "bottom_left",
-        "labels": list(models.keys())
-    },
-    "dashes": ["solid","dashed","dashdot","dotted","dotted"],
-    "matplotlib": {
-        "calc_xtics": False,
-        "width": 6,
-        "height": 4,
-        "style": "default"
-    },
-    "color_settings": {
-        "bg_transparent": False
-    }
-}, export_types=["png", "pdf", "json"])
+    general_plot({
+        "Ys": RMSEs,
+        "Xs": n_s,
+        "xlabel": "Sequence Length",
+        "ylabel": "RMSE",
+        "xscale": "log2",
+        "yscale": "log",
+        "title": "",
+        "fname": f"fBm_Paxson_RMSE",
+        "dirname": "./plots/fBm_Whittle_Paxson",
+        "markers": None,
+        "legend": {
+            "location": "bottom_left",
+            "labels": list(models.keys())
+        },
+        "dashes": ["solid","dashed","dashdot","dotted","dotted","dotted"],
+        "matplotlib": {
+            "calc_xtics": False,
+            "width": 6,
+            "height": 4,
+            "style": "default"
+        },
+        "color_settings": {
+            "bg_transparent": False
+        }
+    }, export_types=["png", "pdf", "json"])
 
-prices = np.array(RMSEs)*np.array(list(totals.values()))
-general_plot({
-    "Ys": prices.tolist(),
-    "Xs": n_s,
-    "xlabel": "Sequence Length",
-    "ylabel": "RMSE * Calculation Time",
-    "xscale": "log2",
-    "yscale": "log",
-    "title": "",
-    "fname": f"fBm_Paxson_RMSE_compute",
-    "dirname": "./plots/fBm_Whittle_Paxson",
-    "markers": None,
-    "legend": {
-        "location": "top_left",
-        "labels": list(models.keys())
-    },
-    "dashes": ["solid","dashed","dashdot","dotted","dotted"],
-    "matplotlib": {
-        "calc_xtics": False,
-        "width": 6,
-        "height": 4,
-        "style": "default"
-    },
-    "color_settings": {
-        "bg_transparent": False
-    }
-}, export_types=["png", "pdf", "json"])
+    prices = np.array(RMSEs)*np.array(list(totals.values()))
+    general_plot({
+        "Ys": prices.tolist(),
+        "Xs": n_s,
+        "xlabel": "Sequence Length",
+        "ylabel": "RMSE * Calculation Time",
+        "xscale": "log2",
+        "yscale": "log",
+        "title": "",
+        "fname": f"fBm_Paxson_RMSE_compute",
+        "dirname": "./plots/fBm_Whittle_Paxson",
+        "markers": None,
+        "legend": {
+            "location": "top_left",
+            "labels": list(models.keys())
+        },
+        "dashes": ["solid","dashed","dashdot","dotted","dotted","dotted"],
+        "matplotlib": {
+            "calc_xtics": False,
+            "width": 6,
+            "height": 4,
+            "style": "default"
+        },
+        "color_settings": {
+            "bg_transparent": False
+        }
+    }, export_types=["png", "pdf", "json"])
