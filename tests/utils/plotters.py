@@ -11,6 +11,7 @@ from bokeh.models.ranges import DataRange1d
 from matplotlib import pyplot as plt
 from matplotlib.colors import  to_rgb, to_hex
 from matplotlib.patches import Patch
+from matplotlib.ticker import MultipleLocator
 import numpy as np
 import colorcet as cc
 import os
@@ -277,6 +278,7 @@ class GeneralPlotter(Plotter):
         ylabel: str="",
         xscale: str="linear",
         yscale: str="linear",
+        y_tick_step=None,
         title: str="",
         colors=None, # the bulit in categorical colors go up to 256
         dashes=["solid"], #"solid", "dashed", "dotted", "dotdash", "dashdot"
@@ -563,6 +565,9 @@ class GeneralPlotter(Plotter):
             ax.set_yscale("log", base=2)
         else:
             ax.set_yscale(self.params["yscale"])
+        
+        if self.params["y_tick_step"] is not None:
+            ax.yaxis.set_major_locator(MultipleLocator(self.params["y_tick_step"]))
 
         for x, y, dash, color, label, marker, hist in zip(
             self.params["Xs"], self.params["Ys"], self.params["dashes"], self.params["colors"],
@@ -1011,7 +1016,7 @@ class ScatterPlotter(Plotter):
         else:
             circle_size = self.params["circle_size"]
             if dot_limit is None:
-                circle_size = circle_size / 2
+                circle_size = circle_size / 1.5
 
             all_x, all_y, all_c = [], [], []
             for x, y, color, label in zip(
@@ -1058,7 +1063,8 @@ class ScatterPlotter(Plotter):
                 alpha=1 - self.params["opacity"],
                 linewidth=0,
                 s=circle_size**2,
-                label=None
+                label=None,
+                rasterized=True
             )  # type: ignore
 
             if not self.params["legend"].get("location", "bottom_right") is None and len(
@@ -1223,7 +1229,7 @@ def scatter_grid_plot(
             )
             for idx, params in enumerate(params_list):
                 plotter = ScatterPlotter(**params)
-                plotter.make_matplotlib_plot(axs[idx], dot_limit=None if extension == "png" else dot_limit)
+                plotter.make_matplotlib_plot(axs[idx], dot_limit=None)
             
             plt.tight_layout()
             plotter.save_matplotlib_figure(

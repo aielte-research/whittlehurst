@@ -53,6 +53,7 @@ def plot_volatility(vol, dates, name, fname, window=252, stride=63, labels=None)
         "Xs": [dates] + [measured_dates]*len(estimates),
         "xlabel": "Date",
         "ylabel": "Volatility and Hurst-estimate",
+        "y_tick_step": 0.1,
         "title": "",
         "fname": fname,
         "dirname": "plots",
@@ -61,18 +62,18 @@ def plot_volatility(vol, dates, name, fname, window=252, stride=63, labels=None)
             "location": "top_left",
             "labels": [name] + [f"{nam} Hurst" for nam in estimates.keys()]
         },
-        # "baselines":{
-        #     "labels": [],
-        #     "values": [0.5],
-        #     "vertical": False,
-        #     "colors": ["black"], # can be shorter than names
-        #     "dashes": ["solid"] # can be shorter than namesself.colors
-        # },
+        "baselines":{
+            "labels": [],
+            "values": [0,0.5],
+            "vertical": False,
+            "colors": ["lightgrey"], # can be shorter than names
+            "dashes": ["solid"] # can be shorter than namesself.colors
+        },
         "matplotlib": {
             "calc_xtics": False,
             # "width": 8.1,
             # "height": 4.725,
-            "width": 8, #6.7,
+            "width": 7, #8,
             "height": 5,
             "style": "default"
         },
