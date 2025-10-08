@@ -5,7 +5,7 @@ fBm and ARFIMA generators for testing
 import warnings
 import numpy as np
 import cmath
-from scipy.fftpack import fft, ifft
+from scipy.fft import fft, ifft
 from scipy.stats import levy_stable, norm
 from typing import List, Optional
 

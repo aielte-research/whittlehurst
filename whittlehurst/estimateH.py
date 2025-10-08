@@ -12,14 +12,16 @@ import threadpoolctl
 threadpoolctl.threadpool_limits(limits=1)
 import numpy as np
 from scipy.optimize import fminbound
-from typing import Optional
+from typing import Optional, Callable
 from .spectraldensity import arfima, fGn_hurwitz, fGn_paxson, fGn_truncation, fGn_taylor
 
 def whittle(
     seq,
     spectrum: str = "fGn",
     K: Optional[int] = None,
-    spectrum_callback = None
+    spectrum_callback: Optional[Callable] = None,
+    a: float = 0.0,
+    b: float = 1.0,
 ) -> float:
     """
     Estimate the Hurst exponent of a time series using the Whittle likelihood method.
@@ -46,6 +48,10 @@ def whittle(
     spectrum_callback : callable, optional
         A custom function that computes the theoretical spectral density given H and n.
         If None, a model is selected based on the `spectrum` parameter.
+    a : float
+        lower bound of the estimation range (default: 0.0)
+    b : float
+        upper bound of the estimation range (default: 1.0)
 
     Returns
     -------
@@ -84,7 +90,7 @@ def whittle(
 
     n = len(seq)
     I_vals = np.abs(np.fft.fft(seq)[1 : n//2+1])**2
-    return fminbound(lambda H: np.sum(I_vals/spectrum_callback(H, n)), 0, 1) # type: ignore
+    return fminbound(lambda H: np.sum(I_vals/spectrum_callback(H, n)), a, b) # type: ignore
 
 def variogram(path, p: float = 1) -> float:
     """
@@ -117,14 +123,17 @@ def variogram(path, p: float = 1) -> float:
 
     return 1 / p * ((np.log(vp(sum2, 2)) - np.log(vp(sum1, 1))) / np.log(2))
 
-def tdml(y):
+def tdml(y, a: float = 0, b: float = 1):
     """
     Estimate the Hurst parameter H using the TDML method.
     y: 1D numpy array of fGn observations
+    a: lower bound of the estimation range (default: 0.0)
+    b: upper bound of the estimation range (default: 1.0)
     Returns the estimated H
     """
+    y = np.asarray(y)
     # Optimize the negative log likelihood with respect to H
-    return fminbound(lambda H: tdml_negll_fgn(H, y), 0, 1)
+    return fminbound(lambda H: tdml_negll_fgn(H, y), a, b)
 
 def tdml_negll_fgn(H, y):
     """
@@ -132,8 +141,6 @@ def tdml_negll_fgn(H, y):
     for a given H, using the Durbin-Levinson recursion.
     Any factors independent of H or y have been removed for efficiency.
     """
-    import numpy as np
-
     n = len(y)
     k = np.arange(n)
     # Compute the theoretical autocovariances for fGn (with sigma^2 = 1)
