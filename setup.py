@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="whittlehurst",
-    version="1.1",
+    version="1.2",
     author="Bálint Csanády",
     python_requires='>3.6',
     author_email="csbalint@protonmail.ch",
@@ -23,5 +23,5 @@ setup(
         "Operating System :: OS Independent",
         "Topic :: Scientific/Engineering :: Mathematics",
     ],
-    install_requires=["numpy", "scipy"],
+    install_requires=["numpy", "scipy", "numba==0.62"],
 )
