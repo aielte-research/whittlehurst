@@ -11,6 +11,7 @@ import threadpoolctl
 # Force single-threaded execution for all known thread pools (without this numpy spawns too many processes for long sequences in TDML)
 threadpoolctl.threadpool_limits(limits=1)
 import numpy as np
+from numba import njit
 from scipy.optimize import fminbound
 from typing import Optional, Callable
 from .spectraldensity import arfima, fGn_hurwitz, fGn_paxson, fGn_truncation, fGn_taylor
@@ -123,16 +124,19 @@ def variogram(path, p: float = 1) -> float:
 
     return 1 / p * ((np.log(vp(sum2, 2)) - np.log(vp(sum1, 1))) / np.log(2))
 
-def tdml(y, a: float = 0, b: float = 1):
+def tdml(y, a: float = 0, b: float = 1, jit: bool = True):
     """
     Estimate the Hurst parameter H using the TDML method.
     y: 1D numpy array of fGn observations
     a: lower bound of the estimation range (default: 0.0)
     b: upper bound of the estimation range (default: 1.0)
+    jit: if True, use more efficient numba jit version of the fGn nagative log likelihood calculation (default: True)
     Returns the estimated H
     """
     y = np.asarray(y)
     # Optimize the negative log likelihood with respect to H
+    if jit:
+        return fminbound(lambda H: tdml_negll_fgn_numba(H, y), a, b)
     return fminbound(lambda H: tdml_negll_fgn(H, y), a, b)
 
 def tdml_negll_fgn(H, y):
@@ -164,5 +168,45 @@ def tdml_negll_fgn(H, y):
         S += err**2 / v_current
         a_prev = a_new
         
+    sigma2_hat = S / n
+    return n * np.log(sigma2_hat) + log_v_sum
+
+@njit(fastmath=True, cache=True)
+def tdml_negll_fgn_numba(H, y):
+    n = y.size
+
+    k = np.arange(n)
+    # Compute the theoretical autocovariances for fGn (with sigma^2 = 1)
+    gamma = 0.5 * (np.abs(k-1)**(2*H) - 2*(k**(2*H)) + (k+1)**(2*H))
+
+    S = y[0] * y[0]
+    log_v_sum = 0.0
+    v_current = 1.0
+    a_prev = np.empty(n - 1)
+    a_new  = np.empty(n - 1)
+
+    for t in range(1, n):
+        s = 0.0
+        for j in range(t - 1):
+            s += a_prev[j] * gamma[t - 1 - j]
+        kappa = (gamma[t] - s) / v_current
+
+        for j in range(t - 1):
+            a_new[j] = a_prev[j] - kappa * a_prev[t - 2 - j]
+        a_new[t - 1] = kappa
+
+        v_current *= (1.0 - kappa * kappa)
+        log_v_sum += np.log(v_current)
+
+        pred = 0.0
+        for j in range(t):
+            pred += a_new[j] * y[t - 1 - j]
+
+        err = y[t] - pred
+        S += (err * err) / v_current
+
+        for j in range(t):
+            a_prev[j] = a_new[j]
+
     sigma2_hat = S / n
     return n * np.log(sigma2_hat) + log_v_sum
