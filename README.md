@@ -147,6 +147,19 @@ $g(\lambda,H) = (2\cdot\sin(\lambda/2))^{1 - 2H}$
 
 ![ARFIMA Local RMSE](https://github.com/aielte-research/whittlehurst/blob/main/tests/plots/arfima/png/ARFIMA_Hurst_local_RMSE.png?raw=true "ARFIMA Local RMSE")
 
+## How to Cite
+```bibtex
+@misc{csanády2025whittlehurstpythonpackageimplementing,
+      title={$whittlehurst$: A Python package implementing Whittle's likelihood estimation of the Hurst exponent}, 
+      author={Bálint Csanády and Lóránt Nagy and András Lukács},
+      year={2025},
+      eprint={2506.01985},
+      archivePrefix={arXiv},
+      primaryClass={stat.CO},
+      url={https://arxiv.org/abs/2506.01985}, 
+}
+```
+
 ## References
 * The initial implementation of Whittle's method was adapted from:  
   
