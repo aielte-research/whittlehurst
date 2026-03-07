@@ -5,6 +5,12 @@ tests/fOU
 tests/plots/arfima/pdf/*
 tests/plots/arfima/json/*
 
+tests/plots/fBm_TDML/pdf/*
+tests/plots/fBm_TDML/png/*
+tests/plots/fBm_TDML/json/*
+!tests/plots/fBm_TDML/png/fBm_TDML_calc_times.png
+!tests/plots/fBm_TDML/png/fBm_TDML_RMSE.png
+
 tests/plots/fBm_baselines/pdf/*
 tests/plots/fBm_baselines/png/*
 tests/plots/fBm_baselines/json/*
