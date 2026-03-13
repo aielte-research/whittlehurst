@@ -1,16 +1,15 @@
-import numpy as  np
-import os
+import numpy as np
 from bokeh.palettes import Category10
-from tqdm import trange
 from pathos.multiprocessing import ProcessingPool as Pool
 from time import time
 
-from whittlehurst import whittle, fbm
+from whittlehurst import whittle, fbm_gen
 
 from utils.metrics import calc_dev, calc_rmse
 from utils.plotters import general_plot, scatter_grid_plot
 
-class Model():
+
+class Model:
     def __init__(self, num_cores=1, estimator=whittle, take_diff=True):
         self.num_cores = num_cores
         self.take_diff = take_diff
@@ -24,318 +23,339 @@ class Model():
             est = p.map(self.estimator, x)
         return est
 
-workers=32
-epochs=100
-batch_size=1000
+workers = 32
+dashes = ["solid", "dashed", "dashdot", "dotted"]
 
 models = {
-    "Hurwitz": Model(workers, lambda seq: whittle(seq,"fGn_Hurwitz")),
-    "Paxson K=10": Model(workers, lambda seq: whittle(seq,"fGn_Paxson",K=10)),
-    "truncation K=200": Model(workers, lambda seq: whittle(seq,"fGn_truncation",K=200)),
-    "Taylor": Model(workers, lambda seq: whittle(seq,"fGn_Taylor"))
+    "Hurwitz": Model(workers, lambda seq: whittle(seq, "fGn_Hurwitz")),
+    "Paxson K=10": Model(workers, lambda seq: whittle(seq, "fGn_Paxson", K=10)),
+    "truncation K=200": Model(workers, lambda seq: whittle(seq, "fGn_truncation", K=200)),
+    "Taylor": Model(workers, lambda seq: whittle(seq, "fGn_Taylor")),
 }
 
-totals = {nam: [] for nam in models.keys()}
-RMSEs = [[] for _ in models]
+plot_names = list(models.keys())
+totals = {name: [] for name in plot_names}
+RMSEs = {name: [] for name in plot_names}
 
-n_s = [128,256,512,1024,2048,4096,8192,16384,32768]
+n_s = [128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768]
+plot_dir = "./plots/fBm_Whittle_variants"
+palette = Category10[10]
+
 for n in n_s:
     print(f"n={n}")
-    orig = []
-    est = {nam: [] for nam in models.keys()}
-    for nam in totals.keys():
-        totals[nam].append(0.0)
-    if n>5000:
-        epochs=64
-    if n>10000:
-        epochs=32
-    if n>20000:
-        epochs=16
-    
-    pbar=trange(epochs)
-    for _ in pbar:
-        pbar.set_description("Generating")
-        orig_batch = list(np.random.uniform(0,1,batch_size))
-        orig += orig_batch
-        
-        def init_worker():
-            # Combine process ID with the current time in milliseconds
-            seed = (os.getpid() + int(time() * 1000000)) % (2**32)
-            np.random.seed(seed)  
-        
-        with Pool(workers, initializer=init_worker) as p:
-            inputs = p.map(lambda H: np.asarray(fbm(H, n)), orig_batch)
-            
-        keys = list(models.keys())
-        np.random.shuffle(keys)
 
-        for nam in keys:
-            start = time()
-            pbar.set_description(nam)
-            est[nam] += list(models[nam](inputs))
-            totals[nam][-1] += time() - start
+    if n > 20000:
+        sample_count = 16000
+    elif n > 10000:
+        sample_count = 32000
+    elif n > 5000:
+        sample_count = 64000
+    else:
+        sample_count = 100000
 
-    for nam in models.keys():
-        totals[nam][-1] /= epochs*batch_size/workers
+    est = {name: [] for name in plot_names}
+    for name in plot_names:
+        totals[name].append(0.0)
+
+    orig, inputs = fbm_gen(sample_count, n=n, threads=workers)
+
+    keys = list(models.keys())
+    np.random.shuffle(keys)
+
+    for name in keys:
+        start = time()
+        est[name] += list(models[name](inputs))
+        totals[name][-1] += (time() - start) * workers / sample_count
+
+    plot_keys = list(est.keys())
+    accumulated_n = n_s[:len(next(iter(totals.values())))]
 
     x_range, deviations_lst, biases_lst, deviation_aucs, bias_aucs = calc_dev(
-        [orig]*len(models),
+        [orig] * len(plot_keys),
         list(est.values()),
-        0, 1, 1000, 0.05
+        0, 1, 1000, 0.05,
     )
 
-    general_plot({
-        "Ys": biases_lst,
-        "Xs": x_range,
-        "xlabel": "H",
-        "ylabel": "Local Bias",
-        "title": "",
-        "fname": f"fBm_spect_{n:05d}_biases",
-        "dirname": "./plots/fBm_Whittle_variants",
-        "markers": None,
-        "baselines":{
-            "labels": [],
-            "values": [0],
-            "vertical": False,
-            "colors": ["grey"],
-            "dashes": ["solid"]
+    general_plot(
+        {
+            "Ys": biases_lst,
+            "Xs": x_range,
+            "xlabel": "H",
+            "ylabel": "Local Bias",
+            "title": "",
+            "fname": f"fBm_spect_{n:05d}_biases",
+            "dirname": plot_dir,
+            "markers": None,
+            "baselines": {
+                "labels": [],
+                "values": [0],
+                "vertical": False,
+                "colors": ["grey"],
+                "dashes": ["solid"],
+            },
+            "legend": {
+                "location": "bottom_right",
+                "labels": [f"{name} (AUC={auc:.4f})" for name, auc in zip(plot_keys, bias_aucs)],
+            },
+            "dashes": dashes,
+            "matplotlib": {
+                "calc_xtics": False,
+                "width": 6,
+                "height": 4,
+                "style": "default",
+            },
+            "color_settings": {
+                "bg_transparent": False,
+            },
         },
-        "legend": {
-            "location": "bottom_right",
-            "labels": [f"{nam} (AUC={auc:.4f})" for nam, auc in zip(models.keys(),bias_aucs)]
-        },
-        "dashes": ["solid","dashed","dashdot","dotted"],
-        "matplotlib": {
-            "calc_xtics": False,
-            "width": 6,
-            "height": 4,
-            "style": "default"
-        },
-        "color_settings": {
-            "bg_transparent": False
-        }
-    }, export_types=["png", "pdf", "json"])
+        export_types=["png", "pdf", "json"],
+    )
 
-    general_plot({
-        "Ys": deviations_lst,
-        "Xs": x_range,
-        "xlabel": "H",
-        "ylabel": "Local Deviation",
-        "title": "",
-        "fname": f"fBm_spect_{n:05d}_deviations",
-        "dirname": "./plots/fBm_Whittle_variants",
-        "markers": None,
-        "baselines":{
-            "labels": [],
-            "values": [0],
-            "vertical": False,
-            "colors": ["grey"],
-            "dashes": ["solid"]
+    general_plot(
+        {
+            "Ys": deviations_lst,
+            "Xs": x_range,
+            "xlabel": "H",
+            "ylabel": "Local Deviation",
+            "title": "",
+            "fname": f"fBm_spect_{n:05d}_deviations",
+            "dirname": plot_dir,
+            "markers": None,
+            "baselines": {
+                "labels": [],
+                "values": [0],
+                "vertical": False,
+                "colors": ["grey"],
+                "dashes": ["solid"],
+            },
+            "legend": {
+                "location": "bottom_right" if n < 1600 else "top_right",
+                "labels": [f"{name} (AUC={auc:.4f})" for name, auc in zip(plot_keys, deviation_aucs)],
+            },
+            "dashes": dashes,
+            "matplotlib": {
+                "calc_xtics": False,
+                "width": 6,
+                "height": 4,
+                "style": "default",
+            },
+            "color_settings": {
+                "bg_transparent": False,
+            },
         },
-        "legend": {
-            "location": "bottom_right" if n<1600  else "top_right",
-            "labels": [f"{nam} (AUC={auc:.4f})" for nam, auc in zip(models.keys(),deviation_aucs)]
-        },
-        "dashes": ["solid","dashed","dashdot","dotted"],
-        "matplotlib": {
-            "calc_xtics": False,
-            "width": 6,
-            "height": 4,
-            "style": "default"
-        },
-        "color_settings": {
-            "bg_transparent": False
-        }
-    }, export_types=["png", "pdf", "json"])
+        export_types=["png", "pdf", "json"],
+    )
 
     x_range, rmse_lst, global_rmse = calc_rmse(
-        [orig]*len(models),
+        [orig] * len(plot_keys),
         list(est.values()),
-        0, 1, 1000, 0.05
+        0, 1, 1000, 0.05,
     )
 
-    for i, rmse in enumerate(global_rmse):
-        RMSEs[i].append(rmse)
+    for i, name in enumerate(plot_keys):
+        RMSEs[name].append(global_rmse[i])
 
-    general_plot({
-        "Ys": rmse_lst,
-        "Xs": x_range,
-        "xlabel": "H",
-        "ylabel": "Local RMSE",
-        "title": "",
-        "fname": f"fBm_spect_{n:05d}_RMSE",
-        "dirname": "./plots/fBm_Whittle_variants",
-        "markers": None,
-        "baselines":{
-            "labels": [],
-            "values": [0],
-            "vertical": False,
-            "colors": ["grey"],
-            "dashes": ["solid"]
+    general_plot(
+        {
+            "Ys": rmse_lst,
+            "Xs": x_range,
+            "xlabel": "H",
+            "ylabel": "Local RMSE",
+            "title": "",
+            "fname": f"fBm_spect_{n:05d}_RMSE",
+            "dirname": plot_dir,
+            "markers": None,
+            "baselines": {
+                "labels": [],
+                "values": [0],
+                "vertical": False,
+                "colors": ["grey"],
+                "dashes": ["solid"],
+            },
+            "legend": {
+                "location": "top_right",
+                "labels": [f"{name} (RMSE={rmse:.4f})" for name, rmse in zip(plot_keys, global_rmse)],
+            },
+            "dashes": dashes,
+            "matplotlib": {
+                "calc_xtics": False,
+                "width": 6,
+                "height": 4,
+                "style": "default",
+            },
+            "color_settings": {
+                "bg_transparent": False,
+            },
         },
-        "legend": {
-            "location": "top_right",
-            "labels": [f"{nam} (RMSE={rmse:.4f})" for nam, rmse in zip(models.keys(),global_rmse)]
-        },
-        "dashes": ["solid","dashed","dashdot","dotted"],
-        "matplotlib": {
-            "calc_xtics": False,
-            "width": 6,
-            "height": 4,
-            "style": "default"
-        },
-        "color_settings": {
-            "bg_transparent": False
-        }
-    }, export_types=["png", "pdf", "json"])
+        export_types=["png", "pdf", "json"],
+    )
 
-    scatter_grid = [{
-        "Xs": orig,
-        "Ys": Ys,
-        "xlabel": "Real H",
-        "ylabel": "Inferred H",
-        #"title": title,
-        "fname": f"fBm_spect_{n:05d}_scatter_grid",
-        "dirname": "./plots/fBm_Whittle_variants",
-        "circle_size": 10,
-        "opacity": 0.3,
-        "colors": [Category10[10][i]],
-        "line45_color": "black",
-        "legend": {
-            "location": "top_left",
-            "labels": [f"{nam}\nRMSE:{global_rmse[i]:.4f}\nbias:{bias_aucs[i]:.4f}\ndev:{deviation_aucs[i]:.4f}"],
-            "markerscale": 2.0
-        },
-        "matplotlib": {
-            "width": 4,
-            "height": 4,
-            "style": "default"
+    scatter_grid = [
+        {
+            "Xs": orig,
+            "Ys": Ys,
+            "xlabel": "Real H",
+            "ylabel": "Inferred H",
+            "fname": f"fBm_spect_{n:05d}_scatter_grid",
+            "dirname": plot_dir,
+            "circle_size": 10,
+            "opacity": 0.3,
+            "colors": [palette[i % len(palette)]],
+            "line45_color": "black",
+            "legend": {
+                "location": "top_left",
+                "labels": [f"{name}\nRMSE:{global_rmse[i]:.4f}\nbias:{bias_aucs[i]:.4f}\ndev:{deviation_aucs[i]:.4f}"],
+                "markerscale": 2.0,
+            },
+            "matplotlib": {
+                "width": 4,
+                "height": 4,
+                "style": "default",
+            },
         }
-    } for i, (nam, Ys) in enumerate(est.items())]
+        for i, (name, Ys) in enumerate(est.items())
+    ]
     scatter_grid_plot(
         params_list=scatter_grid,
         width=2,
         export_types=["png", "pdf", "json"],
         make_subfolder=True,
-        common_limits=True
+        common_limits=True,
     )
 
-    scatter_grid = [{
-        "Xs": orig,
-        "Ys": [y-x for x, y in zip(orig,Ys)],
-        "xlabel": "H",
-        "ylabel": "Error",
-        #"title": title,
-        "fname": f"fBm_spect_{n:05d}_scatter_grid_error",
-        "dirname": "./plots/fBm_Whittle_variants",
-        "circle_size": 10,
-        "opacity": 0.3,
-        "colors": [Category10[10][i]],
-        "line45_color": None,
-        "baselines":{
-            "labels": [None],
-            "values": [0],
-            "vertical": False,
-            "colors": ["black"],
-            "dashes": ["dashed"]
-        },
-        "legend": {
-            "location": "top_left",
-            "labels": [f"{nam}\nRMSE:{global_rmse[i]:.4f}\nbias:{bias_aucs[i]:.4f}\ndev:{deviation_aucs[i]:.4f}"],
-            "markerscale": 2.0
-        },
-        "matplotlib": {
-            "width": 4,
-            "height": 4,
-            "style": "default"
+    scatter_grid = [
+        {
+            "Xs": orig,
+            "Ys": [y - x for x, y in zip(orig, Ys)],
+            "xlabel": "H",
+            "ylabel": "Error",
+            "fname": f"fBm_spect_{n:05d}_scatter_grid_error",
+            "dirname": plot_dir,
+            "circle_size": 10,
+            "opacity": 0.3,
+            "colors": [palette[i % len(palette)]],
+            "line45_color": None,
+            "baselines": {
+                "labels": [None],
+                "values": [0],
+                "vertical": False,
+                "colors": ["black"],
+                "dashes": ["dashed"],
+            },
+            "legend": {
+                "location": "top_left",
+                "labels": [f"{name}\nRMSE:{global_rmse[i]:.4f}\nbias:{bias_aucs[i]:.4f}\ndev:{deviation_aucs[i]:.4f}"],
+                "markerscale": 2.0,
+            },
+            "matplotlib": {
+                "width": 4,
+                "height": 4,
+                "style": "default",
+            },
         }
-    } for i, (nam, Ys) in enumerate(est.items())]
+        for i, (name, Ys) in enumerate(est.items())
+    ]
     scatter_grid_plot(
         params_list=scatter_grid,
         width=2,
         export_types=["png", "pdf", "json"],
         make_subfolder=True,
-        common_limits=True
+        common_limits=True,
     )
 
-    general_plot({
-        "Ys": list(totals.values()),
-        "Xs": n_s,
-        "xlabel": "Sequence Length",
-        "ylabel": "Calculation Time (s)",
-        "xscale": "log2",
-        "yscale": "log",
-        "title": "",
-        "fname": f"fBm_spect_calc_times",
-        "dirname": "./plots/fBm_Whittle_variants",
-        "markers": None,
-        "legend": {
-            "location": "top_left",
-            "labels": list(totals.keys())
-        },
-        "dashes": ["solid","dashed","dashdot","dotted"],
-        "matplotlib": {
-            "calc_xtics": False,
-            "width": 6,
-            "height": 4,
-            "style": "default"
-        },
-        "color_settings": {
-            "bg_transparent": False
-        }
-    }, export_types=["png", "pdf", "json"])
+    total_keys = list(totals.keys())
+    total_vals = list(totals.values())
 
-    general_plot({
-        "Ys": RMSEs,
-        "Xs": n_s,
-        "xlabel": "Sequence Length",
-        "ylabel": "RMSE",
-        "xscale": "log2",
-        "yscale": "log",
-        "title": "",
-        "fname": f"fBm_spect_RMSE",
-        "dirname": "./plots/fBm_Whittle_variants",
-        "markers": None,
-        "legend": {
-            "location": "bottom_left",
-            "labels": list(models.keys())
+    general_plot(
+        {
+            "Ys": total_vals,
+            "Xs": accumulated_n,
+            "xlabel": "Sequence Length",
+            "ylabel": "Calculation Time (s)",
+            "xscale": "log2",
+            "yscale": "log",
+            "title": "",
+            "fname": "fBm_spect_calc_times",
+            "dirname": plot_dir,
+            "markers": None,
+            "legend": {
+                "location": "top_left",
+                "labels": total_keys,
+            },
+            "dashes": dashes,
+            "matplotlib": {
+                "calc_xtics": False,
+                "width": 6,
+                "height": 4,
+                "style": "default",
+            },
+            "color_settings": {
+                "bg_transparent": False,
+            },
         },
-        "dashes": ["solid","dashed","dashdot","dotted"],
-        "matplotlib": {
-            "calc_xtics": False,
-            "width": 6,
-            "height": 4,
-            "style": "default"
-        },
-        "color_settings": {
-            "bg_transparent": False
-        }
-    }, export_types=["png", "pdf", "json"])
+        export_types=["png", "pdf", "json"],
+    )
 
-    prices = np.array(RMSEs)*np.array(list(totals.values()))
-    general_plot({
-        "Ys": prices.tolist(),
-        "Xs": n_s,
-        "xlabel": "Sequence Length",
-        "ylabel": "RMSE * Calculation Time",
-        "xscale": "log2",
-        "yscale": "log",
-        "title": "",
-        "fname": f"fBm_spect_RMSE_compute",
-        "dirname": "./plots/fBm_Whittle_variants",
-        "markers": None,
-        "legend": {
-            "location": "top_left",
-            "labels": list(models.keys())
+    rmse_keys = list(RMSEs.keys())
+    rmse_vals = list(RMSEs.values())
+
+    general_plot(
+        {
+            "Ys": rmse_vals,
+            "Xs": accumulated_n,
+            "xlabel": "Sequence Length",
+            "ylabel": "RMSE",
+            "xscale": "log2",
+            "yscale": "log",
+            "title": "",
+            "fname": "fBm_spect_RMSE",
+            "dirname": plot_dir,
+            "markers": None,
+            "legend": {
+                "location": "bottom_left",
+                "labels": rmse_keys,
+            },
+            "dashes": dashes,
+            "matplotlib": {
+                "calc_xtics": False,
+                "width": 6,
+                "height": 4,
+                "style": "default",
+            },
+            "color_settings": {
+                "bg_transparent": False,
+            },
         },
-        "dashes": ["solid","dashed","dashdot","dotted"],
-        "matplotlib": {
-            "calc_xtics": False,
-            "width": 6,
-            "height": 4,
-            "style": "default"
+        export_types=["png", "pdf", "json"],
+    )
+
+    prices = np.array(rmse_vals) * np.array(total_vals)
+    general_plot(
+        {
+            "Ys": prices.tolist(),
+            "Xs": accumulated_n,
+            "xlabel": "Sequence Length",
+            "ylabel": "RMSE * Calculation Time",
+            "xscale": "log2",
+            "yscale": "log",
+            "title": "",
+            "fname": "fBm_spect_RMSE_compute",
+            "dirname": plot_dir,
+            "markers": None,
+            "legend": {
+                "location": "top_left",
+                "labels": rmse_keys,
+            },
+            "dashes": dashes,
+            "matplotlib": {
+                "calc_xtics": False,
+                "width": 6,
+                "height": 4,
+                "style": "default",
+            },
+            "color_settings": {
+                "bg_transparent": False,
+            },
         },
-        "color_settings": {
-            "bg_transparent": False
-        }
-    }, export_types=["png", "pdf", "json"])
+        export_types=["png", "pdf", "json"],
+    )
