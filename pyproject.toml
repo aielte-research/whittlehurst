@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "whittlehurst"
+version = "1.4"
+description = "Hurst exponent estimation using Whittle's method"
+readme = { file = "README.md", content-type = "text/markdown" }
+requires-python = ">3.6"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [
+  { name = "Bálint Csanády", email = "csbalint@protonmail.ch" },
+]
+keywords = [
+  "hurst",
+  "fractional Gaussian noise",
+  "fGn",
+  "fractional Brownian motion",
+  "fBm",
+  "ARFIMA",
+  "econometrics",
+  "time-series",
+]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Operating System :: OS Independent",
+  "Topic :: Scientific/Engineering :: Mathematics",
+]
+dependencies = [
+  "numpy",
+  "scipy",
+  "numba>=0.59,<0.65",
+  "threadpoolctl",
+  "tqdm",
+  "stochastic",
+]
+
+[project.urls]
+Repository = "https://github.com/aielte-research/whittlehurst.git"
+arXiv = "https://arxiv.org/abs/2506.01985"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["whittlehurst", "whittlehurst.*"]

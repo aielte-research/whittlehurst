@@ -43,6 +43,8 @@ tests/volatility/plots/yaml/*
 *.vim
 *~
 
+.vscode
+
 ################
 # Python files #
 ################

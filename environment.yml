@@ -4,18 +4,15 @@ channels:
 dependencies:
   - python=3.12
   - twine
-  - wheel
-  - tqdm
   - bokeh
   - matplotlib
   - plotly
   - colorcet
   - pip
   - pip:
-    - setuptools
+    - build
     - pathos
     - hurst
     - antropy
     - nolds
-    - stochastic
-    - whittlehurst==1.3
+    - whittlehurst==1.4
