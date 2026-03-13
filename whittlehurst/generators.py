@@ -7,15 +7,84 @@ import numpy as np
 import cmath
 from scipy.fft import fft, ifft
 from scipy.stats import levy_stable, norm
-from typing import List, Optional
+from typing import List, Optional, Iterable
+from multiprocessing import Pool
+from tqdm import tqdm
+import os
+from time import time
+from stochastic import random
+from stochastic.processes.continuous import FractionalBrownianMotion
+
+def _init_worker():
+    # Combine process ID with the current time in milliseconds
+    seed = (os.getpid()*2 + int(time() * 1000000)) % (2**32)
+    np.random.seed(seed)
+    random.seed(seed+1)
+    
+#######
+# fBm #
+#######
+
+def _fbm_gen(params, max_tries=10):
+    """
+    Generate one fBm sequence for the given Hurst exponent, retrying if
+    the stochastic library produces invalid values (NaNs/Infs) or emits
+    the known RuntimeWarning during FFT-based generation.
+
+    Raises:
+        RuntimeError after `max_tries` consecutive failures.
+    """
+    H, n = params
+    
+    last_exc = None
+    for _ in range(max_tries):
+        try:
+            # Treat RuntimeWarnings as errors inside this block.
+            with warnings.catch_warnings():
+                warnings.simplefilter("error", category=RuntimeWarning)
+
+                fbm = FractionalBrownianMotion(hurst=H, t=n)
+                seq = np.asarray(fbm.sample(n))
+
+            # Extra guard: ensure we didn't get NaNs/Infs.
+            if not np.all(np.isfinite(seq)):
+                raise ValueError("Generated sequence contains non-finite values")
+
+            return seq
+
+        except (RuntimeWarning, ValueError) as e:
+            last_exc = e
+            # try again
+            continue
+        except Exception as e:
+            # Any other unexpected error – record and retry as well.
+            last_exc = e
+            continue
+
+    # If we get here, all attempts failed.
+    raise RuntimeError(
+        f"Failed to generate fBm after {max_tries} attempts for H={H:.6f}"
+    ) from last_exc
+
+def fbm_gen(num, n, threads=4, low=0, high=0.9999):
+    """
+    Generate a collection of fBm sequences.
+    """
+    Hs = np.random.uniform(low, high, num)
+    inputs = [(H, n) for H in Hs]
+    
+    chunksize = max(1, len(inputs) // (threads * 8))
+    with Pool(threads, initializer=_init_worker) as pool:
+        sequences = list(tqdm(pool.imap(_fbm_gen, inputs, chunksize = chunksize), total=len(inputs), desc="Generating fBm"))
+    
+    return Hs, np.asarray(sequences)
 
 def fbm(H: float, n: int = 1600, length: float = 1) -> np.ndarray:
     """
-    Generate a one-dimensional fractional Brownian motion (fBm) path using an FFT-based method.
+    Generate a one-dimensional fractional Brownian motion (fBm) path using an the stochastic package.
 
     This function computes a realization of fBm, W(t), on the interval [0, length] using n equally spaced
     grid points. The process is characterized by the Hurst exponent H, which determines the roughness of the path.
-    The spectral (FFT) method is used to generate the process as described in the literature.
 
     Args:
         H (float): Hurst exponent in the interval [0, 1]. Values outside this range will trigger a warning.
@@ -24,49 +93,15 @@ def fbm(H: float, n: int = 1600, length: float = 1) -> np.ndarray:
 
     Returns:
         np.ndarray: A realization of the fBm path over the interval [0, length].
-
-    Raises:
-        Warning: If H is not in the interval [0, 1], a warning is issued.
-
-    References:
-        Kroese, D. P., & Botev, Z. I. (2015). Spatial Process Simulation.
-        In Stochastic Geometry, Spatial Statistics and Random Fields (pp. 369-404).
-        Springer International Publishing. DOI: 10.1007/978-3-319-10064-7_12.
-        Available at: https://sci-hub.se/10.1007/978-3-319-10064-7_12
     """
-    if H < 0 or H > 1:
-        return warnings.warn("Hurst parameter must be between 0 and 1")
-
-    # Compute the autocovariance function for fBm increments
-    r = np.zeros(n + 1)
-    for i in range(n + 1):
-        if i == 0:
-            r[0] = 1
-        else:
-            r[i] = 0.5 * ((i+1)**(2*H) - 2*i**(2*H) + ((i-1)**(2*H)))
-
-    # Form a symmetric sequence for the FFT
-    r = np.concatenate([r, r[::-1][1:-1]])
-
-    # Compute the FFT and then take the real part after scaling
-    lmbd = np.real(fft(r) / (2*n))
-    sqrt_vals = np.array([cmath.sqrt(x) for x in lmbd])
-
-    # Generate complex Gaussian noise
-    noise = np.random.normal(size=2 * n) + np.random.normal(size=2*n) * complex(0, 1)
-
-    # Apply the FFT-based method to generate the fBm increments
-    W = fft(sqrt_vals * noise)
-    W = n**(-H) * np.cumsum(np.concatenate(([0], np.real(W[1:(n + 1)]))))
-
-    # Rescale the path for the final interval [0, length]
-    W = (length**H) * W
-    return W
+    fbm = FractionalBrownianMotion(hurst=H, t=length)
+    seq = np.asarray(fbm.sample(n))
+    return seq
 
 def arfima(
-    ar_params: List[float] = [],
+    phi: Optional[Iterable[float]] = None,
     d: float = 0,
-    ma_params: List[float] = [],
+    theta: Optional[Iterable[float]] = None,
     n: int = 200,
     sigma: float = 1,
     noise_alpha: float = 2,
@@ -80,9 +115,9 @@ def arfima(
     If `H` is provided, the differencing order `d` is set to `H - 0.5`.
 
     Args:
-        ar_params (List[float], optional): Coefficients for the AR component.
+        phi (List[float], optional): Coefficients for the AR component.
         d (float, optional): Differencing order for the ARFIMA process.
-        ma_params (List[float], optional): Coefficients for the MA component.
+        theta (List[float], optional): Coefficients for the MA component.
         n (int, optional): Number of data points to generate (after warmup).
         sigma (float, optional): Scale (standard deviation) of the noise.
         noise_alpha (float, optional): Parameter for the alpha-stable noise distribution.
@@ -95,11 +130,13 @@ def arfima(
     Returns:
         np.ndarray: Generated time series of length `n`.
     """
+    phi = [] if phi is None else list(phi)
+    theta = [] if theta is None else list(theta)
     if H is not None:
         d = H - 0.5
-    ma_series = __ma_model(ma_params, n + warmup, sigma=sigma, noise_alpha=noise_alpha)
+    ma_series = __ma_model(theta, n + warmup, sigma=sigma, noise_alpha=noise_alpha)
     frac_ma = __frac_diff(ma_series, -d)
-    series = __arma_model(ar_params, frac_ma)
+    series = __arma_model(phi, frac_ma)
     return series[-n:]
 
 def __ma_model(params: List[float], n: int, sigma: float, noise_alpha: float) -> np.ndarray:
